@@ -1782,3 +1782,589 @@ body {
   padding-top: 0.35rem;
   margin-top: 0.2rem;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   FUTURISTIC OVERHAUL — ARIA v5.1
+   Grille · Glows · Animations · Glassmorphism militaire
+══════════════════════════════════════════════════════════════ */
+
+/* ── Variables étendues ── */
+:root {
+  --cyan:       #00e5ff;
+  --cyan-dim:   #004455;
+  --glow-lg:    0 0 30px rgba(0,255,65,0.35);
+  --glow-cyan:  0 0 10px rgba(0,229,255,0.4);
+  --surface3:   #000e00;
+}
+
+/* ── Fond grille hex ── */
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle, rgba(0,255,65,0.045) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* ── Vignette ambiante + bordures shell ── */
+.app-shell {
+  border-left:  1px solid rgba(0,255,65,0.06);
+  border-right: 1px solid rgba(0,255,65,0.06);
+  box-shadow:
+    inset 0 0 120px rgba(0,255,65,0.025),
+    inset 0 0 1px rgba(0,255,65,0.06);
+}
+
+/* ── Scanlines plus fines et plus intenses ── */
+.scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.22) 2px,
+    rgba(0,0,0,0.22) 3px
+  );
+}
+
+/* ── Header repensé ── */
+.shell-header {
+  background: linear-gradient(180deg, #000e00 0%, #000500 100%);
+  border-bottom: 1px solid transparent;
+  box-shadow:
+    0 1px 0 rgba(0,255,65,0.25),
+    0 0 40px rgba(0,0,0,0.6),
+    inset 0 -1px 0 rgba(0,255,65,0.08);
+}
+
+/* ── Logo ── */
+.hdr-logo {
+  border-color: var(--green-dim);
+  box-shadow:
+    0 0 18px rgba(0,255,65,0.25),
+    inset 0 0 12px rgba(0,255,65,0.12);
+  background: linear-gradient(135deg, #001800 0%, #000a00 100%);
+  position: relative;
+  overflow: hidden;
+}
+.hdr-logo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,255,65,0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.logo-sym {
+  text-shadow: 0 0 16px rgba(0,255,65,0.9), 0 0 30px rgba(0,255,65,0.4);
+  font-size: 0.9rem;
+}
+
+/* ── Glitch title amélioré ── */
+.hdr-title {
+  text-shadow:
+    0 0 16px rgba(0,255,65,0.8),
+    0 0 40px rgba(0,255,65,0.3);
+  font-size: 1.05rem;
+}
+@keyframes glitch {
+  0%, 85%, 100% {
+    transform: none;
+    text-shadow: 0 0 16px rgba(0,255,65,0.8), 0 0 40px rgba(0,255,65,0.3);
+    clip-path: none;
+  }
+  87% {
+    transform: translate(-3px, 0);
+    text-shadow: 3px 0 #ff003c, -3px 0 var(--cyan);
+    clip-path: polygon(0 15%, 100% 15%, 100% 35%, 0 35%);
+  }
+  88% {
+    transform: translate(3px, 0);
+    text-shadow: -3px 0 #ff003c, 3px 0 var(--cyan);
+    clip-path: polygon(0 55%, 100% 55%, 100% 75%, 0 75%);
+  }
+  89% {
+    transform: translate(-1px, 0) skew(-0.5deg);
+    text-shadow: 0 0 16px rgba(0,255,65,0.8);
+    clip-path: polygon(0 0%, 100% 0%, 100% 100%, 0 100%);
+  }
+  90% { transform: none; clip-path: none; }
+}
+
+/* ── Horloge ── */
+.hdr-clock {
+  background: linear-gradient(135deg, #000e00, #000500);
+  box-shadow: inset 0 0 8px rgba(0,255,65,0.06);
+  border-color: var(--border2);
+  color: var(--green-dim);
+  letter-spacing: 0.14em;
+}
+
+/* ── Phase pill ── */
+.phase-pill {
+  backdrop-filter: blur(4px);
+}
+.phase-pill.phase-intervention {
+  box-shadow: 0 0 16px rgba(255,176,0,0.2), inset 0 0 12px rgba(255,176,0,0.06);
+}
+.phase-pill.phase-termine {
+  box-shadow: 0 0 16px rgba(0,255,65,0.2), inset 0 0 12px rgba(0,255,65,0.06);
+}
+
+/* ── Boutons header ── */
+.btn-print, .btn-reset {
+  background: linear-gradient(135deg, #000e00, #000500);
+  transition: all 0.2s ease;
+}
+.btn-print:hover, .btn-reset:hover {
+  box-shadow: 0 0 14px rgba(0,255,65,0.2);
+  background: linear-gradient(135deg, #001a00, #000e00);
+}
+.btn-print--active {
+  box-shadow: 0 0 16px rgba(0,255,65,0.25) !important;
+}
+
+/* ── AI Cards ── */
+.ai-card {
+  box-shadow:
+    0 4px 30px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(0,255,65,0.04),
+    inset 0 0 30px rgba(0,0,0,0.2);
+  transition: box-shadow 0.3s ease;
+}
+.ai-card:hover {
+  box-shadow:
+    0 6px 40px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(0,255,65,0.08),
+    inset 0 0 30px rgba(0,0,0,0.2);
+}
+
+/* ── Machine ID section — sweep animé ── */
+.dc-machine-id {
+  background: linear-gradient(
+    135deg,
+    rgba(0,60,0,0.55) 0%,
+    rgba(0,30,50,0.5) 50%,
+    rgba(0,15,0,0.35) 100%
+  );
+  border-bottom-color: rgba(0,255,65,0.2);
+  position: relative;
+  overflow: hidden;
+}
+.dc-machine-id::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -80%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0,255,65,0.06),
+    rgba(0,229,255,0.03),
+    transparent
+  );
+  animation: machineSweep 5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes machineSweep {
+  0%   { left: -80%; }
+  100% { left: 130%; }
+}
+
+/* ── Machine fabricant glow ── */
+.machine-fabricant {
+  text-shadow:
+    0 0 12px rgba(0,255,65,0.7),
+    0 0 30px rgba(0,255,65,0.2);
+  font-size: 1.05rem;
+}
+.machine-origine-code {
+  box-shadow: 0 0 10px rgba(0,255,65,0.2), inset 0 0 6px rgba(0,255,65,0.08);
+}
+
+/* ── Status dot pulse amélioré ── */
+@keyframes pulseDot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 6px currentColor;
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.5);
+    box-shadow: 0 0 14px currentColor, 0 0 28px currentColor;
+  }
+}
+
+/* ── DC Header ── */
+.dc-header {
+  border-bottom-width: 1px;
+}
+.status-label {
+  font-size: 0.92rem;
+  letter-spacing: 0.16em;
+}
+
+/* ── Criticité number ── */
+.crit-val {
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+/* ── Badges ── */
+.badge-err {
+  box-shadow: 0 0 8px rgba(255,51,51,0.2), inset 0 0 6px rgba(255,51,51,0.05);
+  animation: errBlink 2s ease-in-out infinite;
+}
+@keyframes errBlink {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0.5; }
+}
+.badge-loto {
+  box-shadow: 0 0 10px rgba(255,51,51,0.3);
+  letter-spacing: 0.14em;
+}
+
+/* ── Blocs ── */
+.dc-block-tag {
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+}
+
+/* ── Étapes intervention ── */
+.etape-card {
+  background: linear-gradient(135deg, #000a00, #000500);
+  border-color: #002200;
+  position: relative;
+  overflow: hidden;
+}
+.etape-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 2px;
+  height: 0;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  transition: height 0.4s ease;
+}
+.etape-card:hover::before { height: 100%; }
+.etape-card:hover {
+  border-color: #004400;
+  box-shadow: 0 0 20px rgba(0,255,65,0.06), inset 0 0 20px rgba(0,255,65,0.02);
+}
+
+.etape-num {
+  border-color: var(--green-dim);
+  box-shadow:
+    0 0 10px rgba(0,255,65,0.2),
+    inset 0 0 8px rgba(0,255,65,0.15);
+  background: linear-gradient(135deg, #001a00, #000e00);
+}
+.etape-num span {
+  text-shadow: 0 0 10px rgba(0,255,65,0.8);
+  font-size: 0.72rem;
+}
+.etape-titre {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgba(0,255,65,0.4);
+}
+
+/* ── Sécurité section ── */
+.dc-securite {
+  background: linear-gradient(135deg, rgba(255,140,0,0.04), rgba(255,80,0,0.02));
+}
+.dc-block-tag.warn {
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 10px rgba(255,176,0,0.6);
+}
+.list-securite li {
+  border-color: rgba(255,140,0,0.3);
+  box-shadow: inset 0 0 12px rgba(255,140,0,0.03);
+  transition: border-color 0.2s;
+}
+.list-securite li:hover {
+  border-color: rgba(255,140,0,0.5);
+}
+
+/* ── Indicateurs / Télémétrie ── */
+.indicator {
+  background: linear-gradient(135deg, #000a00, #000500);
+  border-color: #002200;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.indicator:hover {
+  border-color: #004400;
+  box-shadow: 0 0 10px rgba(0,255,65,0.08);
+}
+.ind-value {
+  text-shadow: 0 0 12px rgba(0,255,65,0.6);
+  font-size: 1rem;
+}
+
+/* ── Vérification finale ── */
+.list-verif li {
+  transition: background 0.2s;
+}
+.list-verif li:hover { background: rgba(0,255,65,0.02); }
+
+/* ── Bottom cards ── */
+.preventif {
+  box-shadow: inset 0 0 20px rgba(0,255,65,0.03);
+}
+.escalade {
+  box-shadow: inset 0 0 20px rgba(0,170,255,0.03);
+}
+
+/* ── SuiviCard ── */
+.suivi-card {
+  box-shadow: 0 4px 30px rgba(0,0,0,0.4), inset 0 0 30px rgba(0,0,0,0.2);
+}
+
+/* ── Barre de progression ASCII ── */
+.prog-bar-ascii {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 8px currentColor;
+}
+.prog-pct {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* ── User bubble ── */
+.user-bubble {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.user-img { filter: brightness(0.88) saturate(0.7) contrast(1.05); }
+.user-img-badge {
+  backdrop-filter: blur(4px);
+  border-color: rgba(0,255,65,0.3);
+}
+
+/* ── AI avatar ── */
+.ai-avatar {
+  box-shadow: 0 0 16px rgba(0,255,65,0.3), inset 0 0 8px rgba(0,255,65,0.1);
+  background: linear-gradient(135deg, #001800, #000a00);
+}
+
+/* ── Loading ── */
+.loading-bubble {
+  background: linear-gradient(135deg, #000e00, #000500);
+  box-shadow: 0 0 20px rgba(0,0,0,0.4), inset 0 0 20px rgba(0,255,65,0.02);
+}
+.typing-dots span {
+  border-radius: 0;
+  width: 6px; height: 6px;
+}
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0) scaleY(1); opacity: 0.3; }
+  30% { transform: translateY(-7px) scaleY(0.8); opacity: 1; box-shadow: 0 0 8px var(--green); }
+}
+.loading-text {
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  color: var(--green-dim);
+  text-shadow: 0 0 8px rgba(0,255,65,0.4);
+}
+
+/* ── Welcome screen boot ── */
+.boot-window {
+  box-shadow:
+    0 0 40px rgba(0,255,65,0.08),
+    0 0 80px rgba(0,0,0,0.5),
+    inset 0 0 30px rgba(0,255,65,0.02);
+  border-color: rgba(0,255,65,0.15);
+}
+.boot-titlebar {
+  background: linear-gradient(90deg, #001800, #000e00);
+  border-bottom-color: rgba(0,255,65,0.12);
+}
+.boot-ok {
+  text-shadow: 0 0 10px rgba(0,255,65,0.8);
+  font-size: 0.75rem;
+}
+.boot-prompt {
+  text-shadow: 0 0 10px rgba(0,255,65,0.8);
+}
+.cursor-blink { text-shadow: 0 0 14px rgba(0,255,65,0.9); }
+
+/* ── Welcome features cards ── */
+.feat-item {
+  background: linear-gradient(135deg, #000e00, #000500);
+  border-color: #001800;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+.feat-item::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,255,65,0.3), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.4s ease;
+}
+.feat-item:hover::before { transform: translateX(100%); }
+.feat-item:hover {
+  border-color: rgba(0,255,65,0.2);
+  box-shadow: 0 0 20px rgba(0,255,65,0.06), inset 0 0 20px rgba(0,255,65,0.02);
+}
+.feat-title {
+  color: var(--green);
+  text-shadow: 0 0 8px rgba(0,255,65,0.4);
+}
+.feat-idx {
+  text-shadow: 0 0 10px rgba(0,255,65,0.7);
+}
+
+/* ── Compat tags ── */
+.compat-tags span {
+  transition: all 0.2s ease;
+}
+.compat-tags span:hover {
+  border-color: rgba(0,255,65,0.3);
+  color: var(--green);
+  box-shadow: 0 0 8px rgba(0,255,65,0.1);
+}
+
+/* ── Input bar ── */
+.shell-input {
+  background: linear-gradient(180deg, #000a00, #000500);
+  border-top-color: rgba(0,255,65,0.12);
+  box-shadow: 0 -4px 30px rgba(0,0,0,0.4);
+}
+.input-row {
+  background: linear-gradient(135deg, #000e00, #000500);
+  border-color: #003300;
+}
+.input-row:focus-within {
+  border-color: var(--green-dim);
+  box-shadow:
+    0 0 0 1px rgba(0,255,65,0.15),
+    0 0 30px rgba(0,255,65,0.08),
+    inset 0 0 20px rgba(0,255,65,0.03);
+}
+.input-row.input-row--drag {
+  box-shadow: 0 0 0 1px rgba(0,255,65,0.4), 0 0 30px rgba(0,255,65,0.15);
+}
+.input-prompt {
+  text-shadow: 0 0 10px rgba(0,255,65,0.7);
+  font-size: 0.75rem;
+}
+.text-input { font-size: 0.85rem; }
+
+/* ── Bouton EXEC ── */
+.btn-send {
+  background: linear-gradient(135deg, #001800, #000e00);
+  border-color: var(--green-dim);
+  box-shadow: inset 0 0 8px rgba(0,255,65,0.08);
+  letter-spacing: 0.18em;
+}
+.btn-send:hover:not(:disabled) {
+  background: linear-gradient(135deg, #002800, #001400);
+  box-shadow:
+    0 0 20px rgba(0,255,65,0.25),
+    inset 0 0 12px rgba(0,255,65,0.12);
+  border-color: var(--green);
+}
+
+/* ── Scrollbar futuriste ── */
+.shell-conv::-webkit-scrollbar { width: 3px; }
+.shell-conv::-webkit-scrollbar-track { background: transparent; }
+.shell-conv::-webkit-scrollbar-thumb {
+  background: var(--green-dim);
+  box-shadow: 0 0 6px var(--green);
+}
+
+/* ── Error row ── */
+.error-row {
+  box-shadow: inset 0 0 20px rgba(255,51,51,0.04);
+  border-color: rgba(255,51,51,0.3);
+}
+
+/* ── History panel ── */
+.hist-panel {
+  box-shadow: 4px 0 40px rgba(0,0,0,0.6), inset -1px 0 0 rgba(0,255,65,0.06);
+  background: linear-gradient(180deg, #000e00, #000500);
+}
+.hist-header {
+  background: linear-gradient(180deg, #001400, #000a00);
+  border-bottom-color: rgba(0,255,65,0.12);
+}
+.hist-entry {
+  background: linear-gradient(135deg, #000a00, #000500);
+  transition: all 0.2s ease;
+}
+.hist-entry:hover {
+  border-color: rgba(0,255,65,0.2);
+  box-shadow: 0 0 12px rgba(0,255,65,0.06);
+}
+
+/* ── Composants / Mesures ── */
+.composant-item {
+  background: linear-gradient(135deg, #000a00, #000500);
+  transition: border-color 0.2s;
+}
+.composant-item:hover { border-color: #004400; }
+.mesure-item {
+  background: linear-gradient(135deg, #000a00, #000500);
+}
+
+/* ── Localisation ── */
+.dc-localisation {
+  background: linear-gradient(135deg, rgba(0,20,8,0.7), rgba(0,10,20,0.5));
+}
+.loc-zone-val {
+  text-shadow: 0 0 10px rgba(0,255,65,0.5);
+}
+.loc-precise-val {
+  background: rgba(255,176,0,0.03);
+  border-left-color: var(--amber);
+  text-shadow: 0 0 6px rgba(255,176,0,0.2);
+}
+
+/* ── Welcome compat ── */
+.welcome-compat {
+  background: linear-gradient(135deg, rgba(0,20,8,0.6), rgba(0,10,20,0.4));
+  border-color: rgba(0,255,65,0.08);
+}
+
+/* ── Suivi row ── */
+.suivi-row-label { text-shadow: 0 0 6px rgba(0,255,65,0.3); }
+.next-label {
+  color: var(--green) !important;
+  text-shadow: 0 0 10px rgba(0,255,65,0.5) !important;
+}
+
+/* ── Alerte suivi ── */
+.suivi-alerte {
+  box-shadow: 0 0 20px rgba(255,0,255,0.15), inset 0 0 20px rgba(255,0,255,0.04);
+}
+
+/* ── Outils ── */
+.outil-item {
+  background: linear-gradient(135deg, #000a00, #000500);
+  transition: border-color 0.2s;
+}
+.outil-item:hover { border-color: #004400; }
+
+/* ── Msg time ── */
+.msg-time { opacity: 0.6; }
+
+/* ── Input hint ── */
+.input-hint {
+  font-size: 0.54rem;
+  letter-spacing: 0.1em;
+  opacity: 0.5;
+}
+
+/* ── Boot line animation retravaillée ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); filter: blur(2px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+/* ── Mesure valeurs ── */
+.mesure-attendu strong { color: var(--green); text-shadow: 0 0 6px rgba(0,255,65,0.4); }
+.mesure-observe strong { color: var(--amber); text-shadow: 0 0 6px rgba(255,176,0,0.4); }
