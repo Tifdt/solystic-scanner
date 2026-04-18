@@ -1280,9 +1280,7 @@ export default function App() {
             {phase === 'INTERVENTION' && '[ACTIVE]'}
             {phase === 'TERMINE'      && '[COMPLETE]'}
           </div>
-          <a href="https://faloria-co.com" target="_blank" rel="noopener noreferrer" className="faloria-link">
-            FALORIA &amp; Co
-          </a>
+          <span className="faloria-link">FALORIA &amp; Co</span>
           <button className="btn-print" onClick={() => setShowHistory(true)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -1293,13 +1291,13 @@ export default function App() {
             LOG {histCount > 0 && `[${histCount}]`}
           </button>
           {messages.length > 0 && (
-            <button className="btn-print" onClick={() => handleExportPDF(messages, machineId)}>
+            <button className="btn-print btn-print--active" onClick={() => handleExportPDF(messages, machineId)} title="Imprimer le rapport d'intervention pour archives papier">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 6 2 18 2 18 9"/>
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
                 <rect x="6" y="14" width="12" height="8"/>
               </svg>
-              PDF
+              IMPRIMER
             </button>
           )}
           {phase !== 'ATTENTE' && (

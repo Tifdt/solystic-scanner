@@ -217,21 +217,22 @@ body {
   50%       { opacity: 0.3; }
 }
 
-/* Faloria link */
+/* Faloria credit — non cliquable */
 .faloria-link {
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.1em;
-  color: var(--green-dim);
-  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
   padding: 0.28rem 0.65rem;
-  text-decoration: none;
   background: var(--surface2);
-  transition: color 0.15s, border-color 0.15s, text-shadow 0.15s;
+  user-select: none;
 }
-.faloria-link:hover {
-  color: var(--green);
-  border-color: var(--green-dim);
+
+/* Bouton imprimer actif */
+.btn-print--active {
+  color: var(--green) !important;
+  border-color: var(--green-dim) !important;
   text-shadow: var(--glow-sm);
 }
 
