@@ -416,7 +416,259 @@ function fileToBase64(file) {
 function nowStr() {
   return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
+function nowFull() {
+  return new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 function genId() { return Math.random().toString(36).slice(2, 10) }
+
+// ─────────────────────────────────────────────────────────────
+//  HISTORY — localStorage
+// ─────────────────────────────────────────────────────────────
+const HISTORY_KEY = 'aria-v5-history'
+const HISTORY_MAX = 100
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') }
+  catch { return [] }
+}
+function saveToHistory(entry) {
+  const hist = loadHistory()
+  hist.unshift(entry)
+  if (hist.length > HISTORY_MAX) hist.splice(HISTORY_MAX)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(hist))
+}
+function deleteHistoryEntry(id) {
+  const hist = loadHistory().filter(e => e.id !== id)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(hist))
+}
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY)
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PDF EXPORT
+// ─────────────────────────────────────────────────────────────
+function handleExportPDF(messages, machineId) {
+  const diag = messages.find(m => m.role === 'ai' && m.data?.type === 'diagnostic')?.data
+  if (!diag) return
+
+  const suivis = messages.filter(m => m.role === 'ai' && m.data?.type === 'suivi').map(m => m.data)
+  const sessionRef = `ARIA-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${genId().toUpperCase()}`
+  const dateStr = nowFull()
+  const mach = diag.machine_identifiee || {}
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport ARIA — ${sessionRef}</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm 18mm 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 9pt; color: #111; background: #fff; }
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 14px; }
+  .ph-title { font-size: 15pt; font-weight: 700; letter-spacing: 2px; }
+  .ph-sub { font-size: 7pt; color: #444; letter-spacing: 1px; margin-top: 2px; }
+  .ph-meta { text-align: right; font-size: 7pt; color: #444; line-height: 1.6; }
+  .ph-ref { font-size: 8pt; font-weight: 700; color: #111; }
+  .section { margin-bottom: 12px; border: 1px solid #ccc; }
+  .section-title { background: #111; color: #fff; font-size: 7.5pt; letter-spacing: 2px; padding: 4px 8px; font-weight: 700; }
+  .section-body { padding: 8px 10px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .kv { display: flex; gap: 6px; margin-bottom: 3px; font-size: 8.5pt; line-height: 1.4; }
+  .kv-label { color: #555; min-width: 130px; flex-shrink: 0; }
+  .kv-val { color: #111; font-weight: 600; }
+  .badge { display: inline-block; border: 1px solid #111; padding: 1px 6px; font-size: 7pt; letter-spacing: 1px; font-weight: 700; margin-right: 4px; }
+  .badge-crit { border-color: #cc0000; color: #cc0000; }
+  .badge-norm { border-color: #006600; color: #006600; }
+  .badge-att  { border-color: #cc6600; color: #cc6600; }
+  .badge-urg  { border-color: #660066; color: #660066; }
+  .badge-loto { border-color: #cc0000; color: #cc0000; background: #fff0f0; }
+  .text-block { font-size: 8.5pt; line-height: 1.65; color: #222; }
+  .etape { display: flex; gap: 8px; margin-bottom: 6px; padding: 6px 8px; border: 1px solid #ddd; page-break-inside: avoid; }
+  .etape-n { min-width: 24px; height: 24px; border: 1px solid #111; display: flex; align-items: center; justify-content: center; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+  .etape-body { flex: 1; }
+  .etape-titre { font-size: 7.5pt; letter-spacing: 1px; font-weight: 700; margin-bottom: 3px; color: #111; }
+  .etape-desc { font-size: 8.5pt; line-height: 1.6; color: #333; }
+  .etape-critere { margin-top: 4px; font-size: 7.5pt; border-left: 2px solid #006600; padding-left: 6px; color: #006600; }
+  .etape-attention { margin-top: 4px; font-size: 7.5pt; border-left: 2px solid #cc6600; padding-left: 6px; color: #cc6600; }
+  .securite-item { display: flex; gap: 6px; padding: 4px 6px; border: 1px solid #cc6600; background: #fffaf0; margin-bottom: 4px; font-size: 8.5pt; color: #664400; line-height: 1.5; }
+  .sec-idx { font-weight: 700; flex-shrink: 0; min-width: 26px; }
+  .verif-item { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; border-bottom: 1px solid #eee; font-size: 8.5pt; }
+  .verif-box { width: 12px; height: 12px; border: 1px solid #111; flex-shrink: 0; margin-top: 1px; }
+  .composant-item { padding: 4px 6px; border: 1px solid #ddd; margin-bottom: 3px; font-size: 8pt; }
+  .c-ref { color: #555; font-size: 7.5pt; }
+  .mesure-item { padding: 4px 8px; border: 1px solid #ddd; margin-bottom: 3px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4px; font-size: 8pt; }
+  .m-label { font-size: 7pt; color: #555; }
+  .suivi-item { padding: 6px 8px; border: 1px solid #ddd; margin-bottom: 4px; font-size: 8.5pt; page-break-inside: avoid; }
+  .suivi-hdr { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .suivi-stat { font-weight: 700; font-size: 7.5pt; letter-spacing: 1px; }
+  .prog-bar { height: 6px; background: #eee; border: 1px solid #ccc; margin-bottom: 4px; }
+  .prog-fill { height: 100%; background: #111; }
+  .page-footer { border-top: 1px solid #ccc; padding-top: 6px; margin-top: 14px; display: flex; justify-content: space-between; font-size: 7pt; color: #666; }
+  h3 { font-size: 8pt; letter-spacing: 1.5px; margin-bottom: 6px; color: #111; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <div class="ph-title">ARIA — RAPPORT D'INTERVENTION</div>
+    <div class="ph-sub">ASSISTANT DE REPARATION IA UNIVERSEL // NEURAL CORE v5.0</div>
+    <div style="margin-top:6px;">
+      ${diag.statut === 'URGENCE'   ? '<span class="badge badge-urg">[URGENCE]</span>' : ''}
+      ${diag.statut === 'CRITIQUE'  ? '<span class="badge badge-crit">[CRITIQUE]</span>' : ''}
+      ${diag.statut === 'ATTENTION' ? '<span class="badge badge-att">[ATTENTION]</span>' : ''}
+      ${diag.statut === 'NORMAL'    ? '<span class="badge badge-norm">[NORMAL]</span>' : ''}
+      <span class="badge">CRITICITE ${diag.score_criticite}/10</span>
+      ${diag.habilitation_requise ? `<span class="badge">HAB: ${diag.habilitation_requise}</span>` : ''}
+      ${diag.consignation_electrique ? '<span class="badge badge-loto">[LOTO REQUIS]</span>' : ''}
+      ${diag.temps_estime ? `<span class="badge">DUREE: ${diag.temps_estime}</span>` : ''}
+    </div>
+  </div>
+  <div class="ph-meta">
+    <div class="ph-ref">${sessionRef}</div>
+    <div>Date : ${dateStr}</div>
+    ${mach.fabricant ? `<div>Machine : ${mach.fabricant}${mach.modele && mach.modele !== 'Non identifiable' ? ' ' + mach.modele : ''}</div>` : ''}
+    ${mach.origine ? `<div>Origine : ${mach.origine}</div>` : ''}
+    ${mach.confiance_identification ? `<div>Identification : ${mach.confiance_identification}</div>` : ''}
+  </div>
+</div>
+
+<div class="row2">
+  <div class="section">
+    <div class="section-title">// MACHINE IDENTIFIEE</div>
+    <div class="section-body">
+      ${mach.fabricant ? `<div class="kv"><span class="kv-label">Fabricant</span><span class="kv-val">${mach.fabricant}</span></div>` : ''}
+      ${mach.modele && mach.modele !== 'Non identifiable' ? `<div class="kv"><span class="kv-label">Modele</span><span class="kv-val">${mach.modele}</span></div>` : ''}
+      ${mach.origine ? `<div class="kv"><span class="kv-label">Origine</span><span class="kv-val">${mach.origine}</span></div>` : ''}
+      ${mach.type_machine ? `<div class="kv"><span class="kv-label">Type</span><span class="kv-val">${mach.type_machine}</span></div>` : ''}
+      ${mach.automate_detecte && mach.automate_detecte !== 'Non visible' ? `<div class="kv"><span class="kv-label">Automate PLC</span><span class="kv-val">${mach.automate_detecte}</span></div>` : ''}
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">// LOCALISATION</div>
+    <div class="section-body">
+      ${diag.sous_systeme ? `<div class="kv"><span class="kv-label">Sous-systeme</span><span class="kv-val">${diag.sous_systeme}</span></div>` : ''}
+      ${diag.zone_machine ? `<div class="kv"><span class="kv-label">Zone</span><span class="kv-val">${diag.zone_machine}</span></div>` : ''}
+      ${diag.code_erreur ? `<div class="kv"><span class="kv-label">Code erreur</span><span class="kv-val">${diag.code_erreur}</span></div>` : ''}
+      ${diag.localisation_precise ? `<div class="kv"><span class="kv-label">Localisation</span><span class="kv-val">${diag.localisation_precise}</span></div>` : ''}
+    </div>
+  </div>
+</div>
+
+<div class="row2">
+  <div class="section">
+    <div class="section-title">// DIAGNOSTIC</div>
+    <div class="section-body"><p class="text-block">${diag.diagnostic || ''}</p></div>
+  </div>
+  <div class="section">
+    <div class="section-title">// CAUSE PROBABLE</div>
+    <div class="section-body"><p class="text-block">${diag.cause_probable || ''}</p></div>
+  </div>
+</div>
+
+${diag.securite?.length ? `
+<div class="section">
+  <div class="section-title">!! SECURITE — EXECUTION OBLIGATOIRE AVANT INTERVENTION</div>
+  <div class="section-body">
+    ${diag.securite.map((s, i) => `<div class="securite-item"><span class="sec-idx">[${String(i+1).padStart(2,'0')}]</span><span>${s}</span></div>`).join('')}
+  </div>
+</div>` : ''}
+
+${diag.composants_cibles?.length ? `
+<div class="section">
+  <div class="section-title">// COMPOSANTS IDENTIFIES</div>
+  <div class="section-body">
+    ${diag.composants_cibles.map((c, i) => `
+      <div class="composant-item">
+        <strong>[${String(i+1).padStart(2,'0')}] ${c.designation}</strong>
+        ${c.reference ? `<span class="c-ref"> — REF: ${c.reference}</span>` : ''}
+        ${c.localisation ? `<div class="c-ref">Localisation: ${c.localisation}</div>` : ''}
+      </div>`).join('')}
+  </div>
+</div>` : ''}
+
+${diag.outils_necessaires?.length ? `
+<div class="section">
+  <div class="section-title">// EQUIPEMENTS REQUIS</div>
+  <div class="section-body" style="display:flex;flex-wrap:wrap;gap:4px;">
+    ${diag.outils_necessaires.map((o, i) => `<span style="border:1px solid #ccc;padding:2px 6px;font-size:8pt;">[${String(i+1).padStart(2,'0')}] ${o}</span>`).join('')}
+  </div>
+</div>` : ''}
+
+${diag.etapes_intervention?.length ? `
+<div class="section">
+  <div class="section-title">// PROCEDURE D'INTERVENTION — ${diag.etapes_intervention.length} ETAPES</div>
+  <div class="section-body">
+    ${diag.etapes_intervention.map(e => `
+      <div class="etape">
+        <div class="etape-n">${String(e.numero).padStart(2,'0')}</div>
+        <div class="etape-body">
+          <div class="etape-titre">${e.titre.toUpperCase()}</div>
+          <div class="etape-desc">${e.description}</div>
+          ${e.valeur_a_controler ? `<div class="etape-critere">CRITERE : ${e.valeur_a_controler}</div>` : ''}
+          ${e.attention ? `<div class="etape-attention">ATTENTION : ${e.attention}</div>` : ''}
+        </div>
+      </div>`).join('')}
+  </div>
+</div>` : ''}
+
+${diag.verification_finale?.length ? `
+<div class="section">
+  <div class="section-title">// VERIFICATION FINALE — GO / NO-GO</div>
+  <div class="section-body">
+    ${diag.verification_finale.map(v => `<div class="verif-item"><div class="verif-box"></div><span>${v}</span></div>`).join('')}
+  </div>
+</div>` : ''}
+
+${diag.action_preventive || diag.escalade ? `
+<div class="row2">
+  ${diag.action_preventive ? `
+    <div class="section">
+      <div class="section-title">// ACTION PREVENTIVE</div>
+      <div class="section-body"><p class="text-block">${diag.action_preventive}</p></div>
+    </div>` : '<div></div>'}
+  ${diag.escalade ? `
+    <div class="section">
+      <div class="section-title">// ESCALADE TECHNIQUE</div>
+      <div class="section-body"><p class="text-block">${diag.escalade}</p></div>
+    </div>` : '<div></div>'}
+</div>` : ''}
+
+${suivis.length ? `
+<div class="section">
+  <div class="section-title">// SUIVI INTERVENTION (${suivis.length} ETAPES)</div>
+  <div class="section-body">
+    ${suivis.map((s, i) => `
+      <div class="suivi-item">
+        <div class="suivi-hdr">
+          <span class="suivi-stat">[${s.statut_etape || ''}] — ETAPE ${i+1}</span>
+          <span style="font-size:7.5pt;">${s.progression || 0}%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${s.progression || 0}%"></div></div>
+        ${s.observation ? `<p class="text-block"><strong>Observation :</strong> ${s.observation}</p>` : ''}
+        ${s.validation ? `<p class="text-block"><strong>Validation :</strong> ${s.validation}</p>` : ''}
+        ${s.prochaine_action ? `<p class="text-block"><strong>Prochaine action :</strong> ${s.prochaine_action}</p>` : ''}
+      </div>`).join('')}
+  </div>
+</div>` : ''}
+
+<div class="page-footer">
+  <span>ARIA Neural Core v5.0 — FALORIA &amp; Co // Diagnostic IA Industriel</span>
+  <span>${sessionRef} // ${dateStr}</span>
+</div>
+
+</body>
+</html>`
+
+  const w = window.open('', '_blank')
+  if (!w) return
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  setTimeout(() => { w.print() }, 400)
+}
 
 // ─────────────────────────────────────────────────────────────
 //  STATUS CONFIG — terminal colors
@@ -458,10 +710,12 @@ function DiagnosticCard({ data }) {
   const mach = data.machine_identifiee || {}
   const confianceCfg = CONFIANCE_CFG[mach.confiance_identification] || CONFIANCE_CFG.HYPOTHESE
 
-  const ORIGINE_FLAG = {
-    'France': '🇫🇷', 'Allemagne': '🇩🇪', 'Pays-Bas': '🇳🇱',
-    'Suède': '🇸🇪', 'Chine': '🇨🇳', 'Japon': '🇯🇵',
-    'USA': '🇺🇸', 'Italie': '🇮🇹', 'Autre': '🌐', 'Inconnu': '?',
+  const ORIGINE_CODE = {
+    'France': 'FR', 'Allemagne': 'DE', 'Pays-Bas': 'NL',
+    'Suède': 'SE', 'Chine': 'CN', 'Japon': 'JP',
+    'USA': 'US', 'Italie': 'IT', 'Corée': 'KR', 'Inde': 'IN',
+    'Australie': 'AU', 'Espagne': 'ES', 'Royaume-Uni': 'UK',
+    'Autre': '--', 'Inconnu': '??',
   }
 
   return (
@@ -478,7 +732,7 @@ function DiagnosticCard({ data }) {
           </div>
           <div className="machine-id-body">
             <div className="machine-id-main">
-              <span className="machine-origine">{ORIGINE_FLAG[mach.origine] || '🌐'}</span>
+              <span className="machine-origine-code">{ORIGINE_CODE[mach.origine] || '--'}</span>
               <span className="machine-fabricant">{mach.fabricant}</span>
               {mach.modele && mach.modele !== 'Non identifiable' && (
                 <span className="machine-modele">/ {mach.modele}</span>
@@ -515,7 +769,7 @@ function DiagnosticCard({ data }) {
             </span>
           )}
           {data.consignation_electrique && (
-            <span className="badge-loto">⚡ LOTO</span>
+            <span className="badge-loto">[LOTO]</span>
           )}
           {data.temps_estime && (
             <span className="badge-time">
@@ -795,6 +1049,73 @@ function SuiviCard({ data }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  HISTORY PANEL
+// ─────────────────────────────────────────────────────────────
+function HistoryPanel({ onClose, onClearAll }) {
+  const [entries, setEntries] = useState(() => loadHistory())
+
+  function handleDelete(id) {
+    deleteHistoryEntry(id)
+    setEntries(loadHistory())
+  }
+
+  function handleClear() {
+    clearHistory()
+    setEntries([])
+    onClearAll()
+  }
+
+  const STATUT_COLOR = { NORMAL: '#00ff41', ATTENTION: '#ffb000', CRITIQUE: '#ff3333', URGENCE: '#ff00ff' }
+
+  return (
+    <div className="hist-overlay" onClick={onClose}>
+      <div className="hist-panel" onClick={e => e.stopPropagation()}>
+        <div className="hist-header">
+          <span className="hist-title">// HISTORIQUE INTERVENTIONS</span>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span className="hist-count">[{entries.length} SESSION{entries.length !== 1 ? 'S' : ''}]</span>
+            {entries.length > 0 && (
+              <button className="hist-btn-clear" onClick={handleClear}>EFFACER TOUT</button>
+            )}
+            <button className="hist-btn-close" onClick={onClose}>FERMER</button>
+          </div>
+        </div>
+        <div className="hist-body">
+          {entries.length === 0 && (
+            <div className="hist-empty">// AUCUNE SESSION SAUVEGARDEE</div>
+          )}
+          {entries.map(e => (
+            <div key={e.id} className="hist-entry">
+              <div className="hist-entry-header">
+                <div className="hist-entry-date">{e.date}</div>
+                <button className="hist-btn-del" onClick={() => handleDelete(e.id)}>SUPPR</button>
+              </div>
+              <div className="hist-entry-machine">
+                {e.machineCode && <span className="hist-code">[{e.machineCode}]</span>}
+                <span className="hist-fabricant">{e.fabricant || 'Machine inconnue'}</span>
+                {e.modele && e.modele !== 'Non identifiable' && (
+                  <span className="hist-modele"> / {e.modele}</span>
+                )}
+              </div>
+              {e.type_machine && <div className="hist-type">{e.type_machine}</div>}
+              <div className="hist-entry-footer">
+                <span className="hist-statut" style={{ color: STATUT_COLOR[e.statut] || '#888' }}>
+                  [{e.statut || 'INCONNU'}]
+                </span>
+                <span className="hist-crit">CRIT {e.criticite}/10</span>
+                {e.sous_systeme && <span className="hist-sys">{e.sous_systeme}</span>}
+                {e.temps && <span className="hist-temps">{e.temps}</span>}
+              </div>
+              {e.resume && <div className="hist-resume">{e.resume.slice(0, 120)}{e.resume.length > 120 ? '...' : ''}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
 export default function App() {
@@ -808,6 +1129,8 @@ export default function App() {
   const [inputText, setInputText]   = useState('')
   const [dragging, setDragging]     = useState(false)
   const [time, setTime]             = useState(nowStr())
+  const [showHistory, setShowHistory] = useState(false)
+  const [histCount, setHistCount]   = useState(() => loadHistory().length)
 
   const fileRef   = useRef(null)
   const bottomRef = useRef(null)
@@ -879,9 +1202,27 @@ export default function App() {
       const updatedApiHistory = [...newApiHistory, { role: 'assistant', content: JSON.stringify(result) }]
       setApiHistory(updatedApiHistory)
       setMessages(prev => [...prev, { id: genId(), role: 'ai', data: result, timestamp: nowStr() }])
-      if (isFirst) {
+
+      if (isFirst && result.type === 'diagnostic') {
+        const mach = result.machine_identifiee || {}
+        if (mach.fabricant) setMachineId(mach)
         setPhase('INTERVENTION')
-        if (result.machine_identifiee) setMachineId(result.machine_identifiee)
+        const ORIGINE_CODE = { 'France':'FR','Allemagne':'DE','Pays-Bas':'NL','Suède':'SE','Chine':'CN','Japon':'JP','USA':'US','Italie':'IT','Corée':'KR','Inde':'IN','Australie':'AU','Espagne':'ES','Royaume-Uni':'UK','Autre':'--','Inconnu':'??' }
+        const entry = {
+          id: genId(),
+          date: nowFull(),
+          fabricant: mach.fabricant || null,
+          modele: mach.modele || null,
+          machineCode: ORIGINE_CODE[mach.origine] || '--',
+          type_machine: mach.type_machine || null,
+          statut: result.statut || 'INCONNU',
+          criticite: result.score_criticite ?? 0,
+          sous_systeme: result.sous_systeme || null,
+          temps: result.temps_estime || null,
+          resume: result.diagnostic || null,
+        }
+        saveToHistory(entry)
+        setHistCount(loadHistory().length)
       }
       if (result.type === 'suivi' && result.progression >= 100) setPhase('TERMINE')
     } catch (e) {
@@ -907,6 +1248,14 @@ export default function App() {
       {/* ══ SCANLINES overlay ══ */}
       <div className="scanlines" aria-hidden="true" />
 
+      {/* ══ HISTORY PANEL ══ */}
+      {showHistory && (
+        <HistoryPanel
+          onClose={() => setShowHistory(false)}
+          onClearAll={() => setHistCount(0)}
+        />
+      )}
+
       {/* ══ HEADER ══ */}
       <header className="shell-header">
         <div className="hdr-left">
@@ -918,7 +1267,7 @@ export default function App() {
             <div className="hdr-sub">
               {machineId
                 ? `${machineId.fabricant}${machineId.modele && machineId.modele !== 'Non identifiable' ? ' ' + machineId.modele : ''} // ${machineId.type_machine || 'MACHINE IDENTIFIEE'} // ${machineId.origine || ''}`
-                : 'NEURAL CORE v4.0 // EXPERT UNIVERSEL MACHINES DE TRI & CONVOYEURS'}
+                : 'NEURAL CORE v5.0 // EXPERT UNIVERSEL — 42 FABRICANTS MONDIAUX'}
             </div>
           </div>
         </div>
@@ -934,14 +1283,23 @@ export default function App() {
           <a href="https://faloria-co.com" target="_blank" rel="noopener noreferrer" className="faloria-link">
             FALORIA &amp; Co
           </a>
+          <button className="btn-print" onClick={() => setShowHistory(true)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            LOG {histCount > 0 && `[${histCount}]`}
+          </button>
           {messages.length > 0 && (
-            <button className="btn-print" onClick={() => window.print()} title="Exporter">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button className="btn-print" onClick={() => handleExportPDF(messages, machineId)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 6 2 18 2 18 9"/>
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
                 <rect x="6" y="14" width="12" height="8"/>
               </svg>
-              EXPORT
+              PDF
             </button>
           )}
           {phase !== 'ATTENTE' && (
@@ -963,15 +1321,15 @@ export default function App() {
           <div className="welcome-screen">
             <div className="boot-window">
               <div className="boot-titlebar">
-                <span className="boot-titlebar-text">ARIA UNIVERSAL SORTER EXPERT — INITIALISATION</span>
+                <span className="boot-titlebar-text">ARIA UNIVERSAL SORTER EXPERT — INITIALISATION v5.0</span>
               </div>
               <div className="boot-body">
-                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> ARIA Neural Core v4.0 — CHARGE</div>
-                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Base fabricants : Solystic · Vanderlande · Siemens · Böwe · Quadient · Geek+ · Toshiba · Pitney Bowes · OEM CN · +15 marques — ACTIF</div>
-                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Module identification visuelle machine — OPERATIONNEL</div>
-                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Base PLCs : Siemens · Allen-Bradley · Omron · Mitsubishi · Schneider · Beckhoff · Delta · Inovance — CHARGE</div>
-                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Protocoles : Profinet · EtherNet/IP · Modbus · CANopen · DeviceNet · Profibus — ACTIF</div>
-                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Module vision GPT-4o — OPERATIONNEL</div>
+                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> ARIA Neural Core v5.0 — CHARGE</div>
+                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Base fabricants : 42 marques — FR/DE/NL/SE/JP/US/CN/KR/IN/AU — ACTIF</div>
+                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Codes erreur VFDs : Siemens / ABB / Schneider / Danfoss / Yaskawa / Delta / Inovance — CHARGE</div>
+                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Base PLCs : Siemens · Allen-Bradley · Omron · Mitsubishi · Beckhoff · Delta · LS Electric — OPERATIONNEL</div>
+                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Protocoles : Profinet · EtherNet/IP · Modbus · CANopen · EtherCAT · Profibus · DeviceNet — ACTIF</div>
+                <div className="boot-line"><span className="boot-ok">[  OK  ]</span> Module vision GPT-4o + analyse root-cause — OPERATIONNEL</div>
                 <div className="boot-line boot-blink">
                   <span className="boot-prompt">root@aria:~#</span> <span className="cursor-blink">█</span>
                 </div>
@@ -980,7 +1338,7 @@ export default function App() {
 
             <p className="welcome-desc">
               Envoyez une photo de n'importe quelle machine — ARIA l'identifie automatiquement<br />
-              et vous guide pas à pas pour la réparer, même sans aucune connaissance technique.
+              et vous guide pas a pas pour la reparer, meme sans aucune connaissance technique.
             </p>
 
             <div className="welcome-features">
@@ -988,28 +1346,28 @@ export default function App() {
                 <span className="feat-idx">[01]</span>
                 <div>
                   <div className="feat-title">IDENTIFICATION AUTOMATIQUE</div>
-                  <div className="feat-desc">Reconnaît le fabricant, le modèle et le pays — toutes marques mondiales</div>
+                  <div className="feat-desc">Reconnait fabricant, modele et pays — 42 marques mondiales dont CN/KR/SE/US</div>
                 </div>
               </div>
               <div className="feat-item">
                 <span className="feat-idx">[02]</span>
                 <div>
-                  <div className="feat-title">DIAGNOSTIC EXPERT INSTANTANE</div>
-                  <div className="feat-desc">Lit l'écran HMI, identifie les composants, localise précisément le problème</div>
+                  <div className="feat-title">DIAGNOSTIC ROOT-CAUSE</div>
+                  <div className="feat-desc">Cause racine + symptome + impact — niveau ingenieur senior</div>
                 </div>
               </div>
               <div className="feat-item">
                 <span className="feat-idx">[03]</span>
                 <div>
-                  <div className="feat-title">GUIDAGE SANS PREREQUIS</div>
-                  <div className="feat-desc">Instructions pédagogiques complètes — zéro connaissance requise</div>
+                  <div className="feat-title">GUIDAGE ADAPTATIF</div>
+                  <div className="feat-desc">Langage technique pour ingenieur, pedagogique geste par geste pour non-initie</div>
                 </div>
               </div>
               <div className="feat-item">
                 <span className="feat-idx">[04]</span>
                 <div>
-                  <div className="feat-title">SUIVI PHOTO EN TEMPS REEL</div>
-                  <div className="feat-desc">ARIA valide chaque étape via vos photos et corrige si besoin</div>
+                  <div className="feat-title">RAPPORT PDF + HISTORIQUE</div>
+                  <div className="feat-desc">Export rapport intervention A4 + historique local toutes sessions</div>
                 </div>
               </div>
             </div>
@@ -1018,9 +1376,11 @@ export default function App() {
               <div className="compat-label">// COMPATIBLE</div>
               <div className="compat-tags">
                 <span>Solystic</span><span>Vanderlande</span><span>Siemens Logistics</span>
-                <span>Böwe Bell+Howell</span><span>Quadient</span><span>Toshiba</span>
-                <span>Geek+</span><span>Pitney Bowes</span><span>Beumer</span>
-                <span>OEM Chinois</span><span>Hitachi</span><span>NEC</span>
+                <span>Dematic</span><span>Boewe Bell+Howell</span><span>Quadient</span>
+                <span>Toshiba</span><span>Geek+</span><span>Pitney Bowes</span><span>Beumer</span>
+                <span>Hyundai Logistics</span><span>LG CNS</span><span>Daifuku</span>
+                <span>Lockheed Martin Postal</span><span>OPEX</span><span>NEC Fielding</span>
+                <span>Hai Robotics</span><span>Inovance</span><span>Delta</span>
                 <span>+ tout convoyeur industriel</span>
               </div>
             </div>
