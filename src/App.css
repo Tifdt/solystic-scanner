@@ -2677,6 +2677,143 @@ body {
   white-space: pre-wrap;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   INPUT MODE BUTTONS (HMI / ALM)
+══════════════════════════════════════════════════════════════ */
+.btn-mode {
+  padding: 0 0.55rem;
+  height: 28px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+
+.btn-mode--hmi {
+  color: #b060ff;
+  border-color: rgba(176,96,255,0.45);
+  background: rgba(176,96,255,0.06);
+}
+.btn-mode--hmi:hover,
+.btn-mode--active {
+  background: rgba(176,96,255,0.18) !important;
+  border-color: #b060ff !important;
+  color: #cc88ff !important;
+  box-shadow: 0 0 10px rgba(176,96,255,0.4) !important;
+}
+
+.btn-mode--alm {
+  color: var(--amber);
+  border-color: rgba(255,176,0,0.4);
+  background: rgba(255,176,0,0.05);
+}
+.btn-mode--alm:hover,
+.btn-mode--active-alm {
+  background: rgba(255,176,0,0.15) !important;
+  border-color: var(--amber) !important;
+  color: #ffd040 !important;
+  box-shadow: 0 0 10px rgba(255,176,0,0.35) !important;
+}
+
+/* ── Mode strip ── */
+.mode-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 1rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid;
+  animation: fadeIn 0.2s ease;
+}
+
+.mode-strip--synoptique {
+  background: rgba(176,96,255,0.08);
+  border-color: rgba(176,96,255,0.3);
+  color: #b060ff;
+}
+.mode-strip--alarme {
+  background: rgba(255,176,0,0.07);
+  border-color: rgba(255,176,0,0.3);
+  color: var(--amber);
+}
+
+.mode-strip-icon { font-size: 0.7rem; opacity: 0.8; }
+.mode-strip-label { font-weight: 700; text-shadow: 0 0 8px currentColor; }
+.mode-strip-hint { opacity: 0.65; flex: 1; }
+.mode-strip-cancel {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+  opacity: 0.7;
+  letter-spacing: 0.08em;
+  transition: opacity 0.15s;
+}
+.mode-strip-cancel:hover { opacity: 1; }
+
+/* ── User message mode badges ── */
+.mode-badge {
+  display: inline-block;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid;
+  margin-bottom: 0.4rem;
+}
+.mode-badge--hmi {
+  color: #b060ff;
+  border-color: rgba(176,96,255,0.5);
+  background: rgba(176,96,255,0.08);
+  text-shadow: 0 0 6px rgba(176,96,255,0.6);
+}
+.mode-badge--alm {
+  color: var(--amber);
+  border-color: rgba(255,176,0,0.5);
+  background: rgba(255,176,0,0.07);
+  text-shadow: 0 0 6px rgba(255,176,0,0.5);
+}
+
+/* ── Welcome features — new styles ── */
+.feat-idx--green  { color: var(--green); text-shadow: var(--glow-sm); }
+.feat-idx--purple { color: #b060ff; text-shadow: 0 0 8px rgba(176,96,255,0.7); }
+.feat-idx--amber  { color: var(--amber); text-shadow: 0 0 8px rgba(255,176,0,0.6); }
+
+.feat-item--hmi { border-left: 2px solid rgba(176,96,255,0.35); padding-left: 0.75rem; }
+.feat-item--alm { border-left: 2px solid rgba(255,176,0,0.35); padding-left: 0.75rem; }
+
+.feat-title--hmi { color: #cc88ff; }
+.feat-title--alm { color: #ffd040; }
+
+.feat-tag {
+  display: inline-block;
+  font-size: 0.55rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid;
+  vertical-align: middle;
+  margin-left: 0.4rem;
+  letter-spacing: 0.1em;
+}
+.feat-tag--hmi {
+  color: #b060ff;
+  border-color: rgba(176,96,255,0.5);
+  background: rgba(176,96,255,0.1);
+}
+.feat-tag--alm {
+  color: var(--amber);
+  border-color: rgba(255,176,0,0.5);
+  background: rgba(255,176,0,0.08);
+}
+
 .reponse-next {
   border-top: 1px solid var(--border);
   padding: 0.75rem 1rem;

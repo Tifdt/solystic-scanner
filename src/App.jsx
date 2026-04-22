@@ -433,6 +433,38 @@ Si l'opérateur envoie un message TEXTE UNIQUEMENT (sans nouvelle photo) — il 
 }
 alerte : null sauf danger immédiat identifié.
 
+══ MODE SCAN SYNOPTIQUE — PHOTO ÉCRAN HMI / WinCC / SCADA ══
+Si le message commence par "SCAN SYNOPTIQUE" :
+L'opérateur a pris une photo de son écran superviseur industriel. Applique ce protocole :
+[1] TRANSCRIPTION EXHAUSTIVE : lis et retranscris TOUTES les alarmes visibles mot pour mot avec leur timestamp
+[2] CLASSEMENT PAR PRIORITÉ :
+   → PRIORITÉ 1 [BLOCAGE] : alarme qui arrête la machine (fond rouge clignotant)
+   → PRIORITÉ 2 [DÉGRADATION] : alarme qui ralentit ou dégrade la production (fond orange)
+   → PRIORITÉ 3 [AVERTISSEMENT] : alarme qui n'arrête pas mais signale un risque (fond jaune)
+[3] PLAN SÉQUENTIEL : une étape_intervention = une alarme dans l'ordre de priorité. Commence par le BLOCAGE.
+[4] ÉTAT PRODUCTION : lis vitesse, débit, efficacité, compteurs si affichés. Compare aux nominaux.
+[5] TRADUCTION SIMPLE : chaque code technique traduit en français compréhensible par un non-initié.
+
+CODES ALARMES SOLYSTIC WinCC TRIMATIC/TGF (référence terrain) :
+• "AT" prefix = Alarme Trieur active, bloquante production
+• "AL" prefix = Alarme Locale, non bloquante
+• "Défaut répartiteur d'écluse X mode de salle" → Aiguillage bloqué en position évacuation générale (mode sécurité). Cause : solénoïde 24VDC HS (mesurer résistance bobine ≈115Ω), capteur fin de course défaillant (LED éteinte), ou activation manuelle opérateur. Résolution : identifier cause, acquitter alarme HMI, remettre en automatique.
+• "Défaut capteur de boucle" dépileur → Capteur détectant la courroie d'extraction HS ou désaligné. Résolution : vérifier LED capteur, ajuster distance 2-4mm, vérifier connecteur M12.
+• "Bourrage" → Pli coinçé dans transport. Résolution : ARRÊT + CONSIGNATION → dégager manuellement → vérifier capteurs zone.
+• "Défaut moteur" → Thermique déclenché ou variateur en défaut. Résolution : vérifier variateur (code erreur afficheur), attendre refroidissement 15min, réarmer.
+• "Mode salle" = état dégradé global, toutes sorties en évacuation centrale. Cause : alarme prioritaire non traitée. Fix : traiter l'alarme source, acquitter sur WinCC.
+• Synoptique couleurs : bleu = transport actif OK, rouge = alarme active, vert = OK, gris = arrêté.
+• Débit nominal TGF-MTI-12 : 40 000 plis/h. Si <80% → anomalie à investiguer.
+
+DÉCODEUR ALARME RAPIDE — pour tout fabricant :
+Si message commence par "DÉCODEUR ALARME" :
+L'opérateur a tapé le code directement sans photo. Réponds en type: "reponse_question" avec :
+- Traduction du code en français simple (ce que ça veut dire en 1 phrase)
+- Cause la plus probable (3 causes classées par probabilité)
+- Procédure étape par étape ultra-pédagogique
+- Critère de résolution : "Tu sauras que c'est réparé quand..."
+- Délai estimé d'intervention
+
 JSON VALIDE UNIQUEMENT. Français pédagogique adapté au niveau détecté. Valeurs numériques toujours.`
 
 // ─────────────────────────────────────────────────────────────
@@ -1444,6 +1476,7 @@ export default function App() {
   const [inputText, setInputText]   = useState('')
   const [dragging, setDragging]     = useState(false)
   const [time, setTime]             = useState(nowStr())
+  const [inputMode, setInputMode]         = useState('normal')
   const [showHistory, setShowHistory]     = useState(false)
   const [showDashboard, setShowDashboard] = useState(false)
   const [histCount, setHistCount]         = useState(() => loadHistory().length)
@@ -1453,9 +1486,10 @@ export default function App() {
     return h.length > 0 ? calcTotalStats(h, t).totalEconomies : 0
   })
 
-  const fileRef   = useRef(null)
-  const bottomRef = useRef(null)
-  const textRef   = useRef(null)
+  const fileRef    = useRef(null)
+  const hmiFileRef = useRef(null)
+  const bottomRef  = useRef(null)
+  const textRef    = useRef(null)
 
   useEffect(() => {
     const t = setInterval(() => setTime(nowStr()), 1000)
@@ -1492,11 +1526,24 @@ export default function App() {
     const caption   = inputText.trim()
     const isFirst   = messages.length === 0
     const userMsgId = genId()
+    const currentMode = inputMode
+
+    let apiText = caption
+    if (currentMode === 'synoptique') {
+      apiText = `SCAN SYNOPTIQUE — Photo d'écran HMI/WinCC/superviseur industriel. ${caption ? caption + '. ' : ''}Transcris TOUTES les alarmes visibles mot pour mot, classe-les par priorité (BLOCAGE/DÉGRADATION/AVERTISSEMENT), et génère le plan d'intervention séquentiel.`
+    } else if (currentMode === 'alarme') {
+      apiText = `DÉCODEUR ALARME — Code alarme lu sur l'écran : "${caption}". Donne la traduction en français, les 3 causes probables classées, la procédure complète étape par étape et le critère de résolution.`
+    } else if (!apiText) {
+      apiText = isFirst
+        ? 'Analyse cette image et génère le diagnostic initial complet.'
+        : 'Voici une photo de mon intervention. Analyse et guide-moi pour la suite.'
+    }
 
     const userMsg = {
       id: userMsgId, role: 'user',
       imagePreview: inputImage?.preview || null,
       caption: caption || null,
+      mode: currentMode !== 'normal' ? currentMode : null,
       timestamp: nowStr(),
     }
 
@@ -1504,17 +1551,13 @@ export default function App() {
     if (inputImage) {
       apiContent.push({ type: 'image_url', image_url: { url: `data:${inputImage.mimeType};base64,${inputImage.base64}` } })
     }
-    apiContent.push({
-      type: 'text',
-      text: caption || (isFirst
-        ? 'Analyse cette image et génère le diagnostic initial complet.'
-        : 'Voici une photo de mon intervention. Analyse et guide-moi pour la suite.'),
-    })
+    apiContent.push({ type: 'text', text: apiText })
 
     const newApiHistory = [...apiHistory, { role: 'user', content: apiContent }]
     setMessages(prev => [...prev, userMsg])
     setInputImage(null)
     setInputText('')
+    setInputMode('normal')
     setLoading(true)
     setError(null)
 
@@ -1578,6 +1621,7 @@ export default function App() {
     setMachineId(null)
     setInputImage(null)
     setInputText('')
+    setInputMode('normal')
     setError(null)
   }
 
@@ -1707,31 +1751,31 @@ export default function App() {
 
             <div className="welcome-features">
               <div className="feat-item">
-                <span className="feat-idx">[01]</span>
+                <span className="feat-idx feat-idx--green">[01]</span>
                 <div>
-                  <div className="feat-title">IDENTIFICATION AUTOMATIQUE</div>
-                  <div className="feat-desc">Reconnait fabricant, modele et pays — 42 marques mondiales dont CN/KR/SE/US</div>
+                  <div className="feat-title">PHOTO MACHINE</div>
+                  <div className="feat-desc">Prends une photo de la machine en panne → ARIA identifie, diagnostique et guide etape par etape</div>
+                </div>
+              </div>
+              <div className="feat-item feat-item--hmi">
+                <span className="feat-idx feat-idx--purple">[02]</span>
+                <div>
+                  <div className="feat-title feat-title--hmi">SCAN SYNOPTIQUE <span className="feat-tag feat-tag--hmi">HMI</span></div>
+                  <div className="feat-desc">Photo de l'ecran WinCC/SCADA → ARIA lit toutes les alarmes, les classe par priorite et te dit quoi faire en premier</div>
+                </div>
+              </div>
+              <div className="feat-item feat-item--alm">
+                <span className="feat-idx feat-idx--amber">[03]</span>
+                <div>
+                  <div className="feat-title feat-title--alm">DECODEUR ALARME <span className="feat-tag feat-tag--alm">ALM</span></div>
+                  <div className="feat-desc">Tape le code d'alarme vu sur l'ecran → traduction, cause probable, procedure complete</div>
                 </div>
               </div>
               <div className="feat-item">
-                <span className="feat-idx">[02]</span>
+                <span className="feat-idx feat-idx--green">[04]</span>
                 <div>
-                  <div className="feat-title">DIAGNOSTIC ROOT-CAUSE</div>
-                  <div className="feat-desc">Cause racine + symptome + impact — niveau ingenieur senior</div>
-                </div>
-              </div>
-              <div className="feat-item">
-                <span className="feat-idx">[03]</span>
-                <div>
-                  <div className="feat-title">GUIDAGE ADAPTATIF</div>
-                  <div className="feat-desc">Langage technique pour ingenieur, pedagogique geste par geste pour non-initie</div>
-                </div>
-              </div>
-              <div className="feat-item">
-                <span className="feat-idx">[04]</span>
-                <div>
-                  <div className="feat-title">RAPPORT PDF + HISTORIQUE</div>
-                  <div className="feat-desc">Export rapport intervention A4 + historique local toutes sessions</div>
+                  <div className="feat-title">QUESTIONS EN COURS</div>
+                  <div className="feat-desc">Pendant la reparation : pose tes questions par ecrit sur la derniere image analysee. ARIA repond comme un expert a cote de toi.</div>
                 </div>
               </div>
             </div>
@@ -1756,6 +1800,8 @@ export default function App() {
 
             {msg.role === 'user' && (
               <div className="user-bubble">
+                {msg.mode === 'synoptique' && <div className="mode-badge mode-badge--hmi">// SCAN SYNOPTIQUE HMI</div>}
+                {msg.mode === 'alarme' && <div className="mode-badge mode-badge--alm">// DÉCODEUR ALARME</div>}
                 {msg.imagePreview && (
                   <div className="user-img-wrap">
                     <img src={msg.imagePreview} alt="Capture envoyée" className="user-img" />
@@ -1818,6 +1864,28 @@ export default function App() {
           </div>
         )}
 
+        {/* Mode indicator strip */}
+        {inputMode !== 'normal' && (
+          <div className={`mode-strip mode-strip--${inputMode}`}>
+            {inputMode === 'synoptique' && (
+              <>
+                <span className="mode-strip-icon">⬡</span>
+                <span className="mode-strip-label">MODE SCAN SYNOPTIQUE ACTIF</span>
+                <span className="mode-strip-hint">— Prends une photo de l'écran WinCC/SCADA et envoie</span>
+                <button className="mode-strip-cancel" onClick={() => setInputMode('normal')}>✕ ANNULER</button>
+              </>
+            )}
+            {inputMode === 'alarme' && (
+              <>
+                <span className="mode-strip-icon">▲</span>
+                <span className="mode-strip-label">MODE DÉCODEUR ALARME ACTIF</span>
+                <span className="mode-strip-hint">— Tape le code alarme exactement comme affiché</span>
+                <button className="mode-strip-cancel" onClick={() => setInputMode('normal')}>✕ ANNULER</button>
+              </>
+            )}
+          </div>
+        )}
+
         <div
           className={`input-row${dragging ? ' input-row--drag' : ''}`}
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
@@ -1832,13 +1900,35 @@ export default function App() {
             </svg>
           </button>
 
+          {/* HMI button — scan synoptique */}
+          <button
+            className={`btn-mode btn-mode--hmi${inputMode === 'synoptique' ? ' btn-mode--active' : ''}`}
+            onClick={() => { setInputMode(inputMode === 'synoptique' ? 'normal' : 'synoptique'); hmiFileRef.current?.click() }}
+            title="Scanner un écran HMI / WinCC / SCADA"
+          >HMI</button>
+
+          {/* ALM button — alarm decoder */}
+          <button
+            className={`btn-mode btn-mode--alm${inputMode === 'alarme' ? ' btn-mode--active-alm' : ''}`}
+            onClick={() => setInputMode(inputMode === 'alarme' ? 'normal' : 'alarme')}
+            title="Décoder un code alarme"
+          >ALM</button>
+
           <span className="input-prompt">root@aria:~#</span>
 
           <input
             ref={textRef}
             type="text"
             className="text-input"
-            placeholder={phase === 'ATTENTE' ? 'décrire le problème...' : 'décrire l\'action ou poser une question...'}
+            placeholder={
+              inputMode === 'synoptique'
+                ? 'description optionnelle de l\'écran HMI...'
+                : inputMode === 'alarme'
+                ? 'ex: AT1 5 Défaut répartiteur — ou — F001 — ou — Err24...'
+                : phase === 'ATTENTE'
+                ? 'décrire le problème ou envoyer une photo...'
+                : 'décrire l\'action, poser une question...'
+            }
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -1855,9 +1945,17 @@ export default function App() {
 
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
           onChange={(e) => handleFile(e.target.files[0])} />
+        <input ref={hmiFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={(e) => { handleFile(e.target.files[0]); setInputMode('synoptique') }} />
 
         <div className="input-hint">
-          {dragging ? '// RELEASE TO UPLOAD' : '// DROP IMAGE · ENTER TO EXECUTE · IMAGE + TEXT SUPPORTED'}
+          {dragging
+            ? '// RELEASE TO UPLOAD'
+            : inputMode === 'synoptique'
+            ? '// SCAN SYNOPTIQUE — PHOTO ÉCRAN HMI · WINCC · SCADA'
+            : inputMode === 'alarme'
+            ? '// DÉCODEUR ALARME — TAPE LE CODE EXACT VU À L\'ÉCRAN'
+            : '// DROP IMAGE · ENTER TO EXECUTE · IMAGE + TEXT SUPPORTED'}
         </div>
       </footer>
 
