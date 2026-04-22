@@ -2368,3 +2368,52 @@ body {
 /* ── Mesure valeurs ── */
 .mesure-attendu strong { color: var(--green); text-shadow: 0 0 6px rgba(0,255,65,0.4); }
 .mesure-observe strong { color: var(--amber); text-shadow: 0 0 6px rgba(255,176,0,0.4); }
+
+/* ══════════════════════════════════════════════════════════════
+   REPONSE QUESTION CARD
+══════════════════════════════════════════════════════════════ */
+.reponse-card {
+  border: 1px solid var(--border2);
+  border-left: 3px solid #00bfff;
+}
+
+.reponse-header {
+  background: rgba(0,191,255,0.05);
+  border-bottom: 1px solid rgba(0,191,255,0.2);
+  padding: 0.75rem 1rem;
+}
+
+.reponse-question-tag {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: #00bfff;
+  margin-bottom: 0.35rem;
+  text-shadow: 0 0 8px rgba(0,191,255,0.6);
+}
+
+.reponse-question-text {
+  font-size: 0.78rem;
+  color: #66ccff;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.reponse-text {
+  font-size: 0.85rem;
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.reponse-next {
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  background: rgba(0,255,65,0.03);
+}
+
+.reponse-next p {
+  font-size: 0.82rem;
+  color: var(--green);
+  margin-top: 0.4rem;
+  line-height: 1.6;
+}

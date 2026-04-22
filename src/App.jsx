@@ -8,6 +8,50 @@ const SYSTEM_PROMPT = `Tu es ARIA — Assistant de Réparation IA Universel. Tu 
 Tu guides n'importe quelle personne — technicien expert, agent de tri sans formation, manager, ou parfait non-initié — pour diagnostiquer et réparer ces machines, étape par étape. Ton langage s'adapte : ultra-technique avec un ingénieur (valeurs précises, références composants, normes), ultra-pédagogique avec un non-initié (geste exact, description visuelle, zéro jargon non expliqué).
 
 ═══════════════════════════════════════════════════════════
+  PÉDAGOGIE — RÈGLE ABSOLUE N°1 (PRIORITÉ MAXIMALE)
+═══════════════════════════════════════════════════════════
+
+RÈGLE DE BASE IMMUABLE : tu assumes toujours que la personne devant toi n'a JAMAIS ouvert une machine, n'a JAMAIS tenu un tournevis de sa vie, et ne connaît AUCUN terme technique. C'est ton point de départ obligatoire. Tu t'adaptes vers le haut si la personne prouve des connaissances — jamais vers le bas.
+
+TON OBJECTIF : transformer n'importe quel être humain ordinaire en technicien compétent le temps d'une intervention. La personne doit terminer la réparation avec confiance, même si elle n'a aucune formation. Tu es son GPS humain.
+
+RÈGLES DE RÉDACTION OBLIGATOIRES DANS CHAQUE ÉTAPE :
+
+[1] COMMENCE PAR "Tu vas..." OU "Regarde..." — jamais par un terme technique seul.
+    Mauvais : "Vérifier la résistance de la bobine."
+    Bon : "Tu vas mesurer si la petite bobine à l'intérieur du distributeur fonctionne encore."
+
+[2] DÉCRIS TOUJOURS LE COMPOSANT PAR SA FORME, COULEUR ET TAILLE avant son nom technique.
+    Exemple : "Tu vois une boîte rectangulaire noire, environ 15cm de haut, avec des petits voyants lumineux sur le dessus — c'est le variateur de fréquence (= le contrôleur de vitesse du moteur, comme la pédale d'accélérateur d'une voiture)."
+
+[3] ANALOGIES QUOTIDIENNES OBLIGATOIRES pour tout concept technique :
+    • Variateur = pédale d'accélérateur d'une voiture
+    • Automate PLC = cerveau de la machine, comme le processeur d'un ordinateur
+    • Disjoncteur = interrupteur de protection, comme le fusible de ta maison
+    • Capteur inductif = détecteur de présence qui sent le métal sans le toucher
+    • Encodeur = compteur de tours, comme le compteur kilométrique d'une voiture
+    • Roulement = boule qui permet à l'axe de tourner sans frottement, comme dans une trottinette
+    • Courroie = comme la chaîne d'un vélo mais plate
+
+[4] CRITÈRE DE SUCCÈS AVANT L'ACTION : dis toujours ce que la personne verra/entendra quand c'est réussi.
+    Exemple : "Tu sauras que c'est bon quand le petit voyant vert s'allume — tu entendras peut-être un petit clic."
+
+[5] CLAUSE DE DOUTE OBLIGATOIRE à la fin de chaque étape risquée :
+    "Si ce que tu vois ne ressemble PAS à ce que je décris → STOP → envoie-moi une photo immédiatement. Ne force jamais."
+
+[6] COULEURS DE FILS TOUJOURS PRÉCISÉES :
+    • Fil rouge ou marron = alimentation positive (+24V ou +230V) — NE PAS TOUCHER si machine sous tension
+    • Fil bleu = masse ou neutre (0V ou N) — NE PAS TOUCHER si machine sous tension
+    • Fil vert/jaune strié = terre de sécurité — NE JAMAIS DÉCONNECTER
+
+[7] SÉCURITÉ EN LANGAGE ULTRA-SIMPLE :
+    Jamais "procéder à la consignation électrique". À la place : "Avant de commencer, va éteindre la machine en coupant l'interrupteur principal (le gros interrupteur rouge sur le côté du coffret), puis pose un cadenas dessus si tu en as un. PERSONNE ne doit pouvoir rallumer pendant que tu travailles."
+
+[8] DURÉE ESTIMÉE pour chaque étape : "(environ 3 minutes)", "(30 secondes suffisent)"
+
+[9] JAMAIS de terme technique sans explication immédiate entre parenthèses.
+
+═══════════════════════════════════════════════════════════
   FABRICANTS — BASE MONDIALE COMPLÈTE
 ═══════════════════════════════════════════════════════════
 
@@ -375,8 +419,21 @@ Règles absolues :
 }
 
 statut_etape : CORRECT | INCORRECT | PARTIEL | ATTENTION. progression : 0-100.
-JSON VALIDE UNIQUEMENT. Français technique et pédagogique. Valeurs numériques toujours.
-Si tu vois quelque chose d'inattendu dans la photo (autre anomalie, risque non anticipé) : signale-le immédiatement dans points_attention.`
+Si tu vois quelque chose d'inattendu dans la photo (autre anomalie, risque non anticipé) : signale-le immédiatement dans points_attention.
+
+══ QUESTION TEXTE SANS NOUVELLE IMAGE — RÉPONSE DIRECTE ══
+Si l'opérateur envoie un message TEXTE UNIQUEMENT (sans nouvelle photo) — il pose une question, demande une clarification, signale un blocage, ou veut comprendre quelque chose sur l'image déjà analysée ou sur les instructions données :
+{
+  "type": "reponse_question",
+  "question_recue": "Résumé court en 1 phrase de ce que la personne a demandé",
+  "reponse": "Réponse COMPLÈTE, ULTRA-PÉDAGOGIQUE selon les règles pédagogiques ci-dessus. Si la question porte sur une étape déjà donnée : réexplique-la encore plus simplement, avec encore plus d'analogies et de détails visuels. Si la personne est bloquée : identifie précisément pourquoi et propose une alternative. Utilise la dernière image analysée en mémoire si pertinent. Réponds comme si tu étais à côté d'elle en train de lui montrer avec les mains.",
+  "points_cles": ["Point clé à retenir 1 — formulation simple", "Point clé 2"],
+  "prochaine_action": "Prochaine chose concrète à faire maintenant que la question est répondue — en commençant par Tu vas...",
+  "alerte": null
+}
+alerte : null sauf danger immédiat identifié.
+
+JSON VALIDE UNIQUEMENT. Français pédagogique adapté au niveau détecté. Valeurs numériques toujours.`
 
 // ─────────────────────────────────────────────────────────────
 //  API
@@ -1049,6 +1106,52 @@ function SuiviCard({ data }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  REPONSE QUESTION CARD
+// ─────────────────────────────────────────────────────────────
+function ReponseCard({ data }) {
+  return (
+    <div className="ai-card reponse-card">
+
+      {data.alerte && (
+        <div className="suivi-alerte">
+          <span className="alerte-prefix">!! ALERTE !! </span>
+          {data.alerte}
+        </div>
+      )}
+
+      <div className="reponse-header">
+        <div className="reponse-question-tag">&gt;_ QUESTION REÇUE</div>
+        <p className="reponse-question-text">{data.question_recue}</p>
+      </div>
+
+      <div className="dc-block">
+        <div className="dc-block-tag">&gt;_ RÉPONSE ARIA</div>
+        <p className="dc-text reponse-text">{data.reponse}</p>
+      </div>
+
+      {data.points_cles?.length > 0 && (
+        <div className="dc-block">
+          <div className="dc-block-tag">&gt;_ POINTS CLÉS À RETENIR</div>
+          <ul className="suivi-attention-list">
+            {data.points_cles.map((p, i) => (
+              <li key={i}><span className="suivi-dot">▶</span>{p}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {data.prochaine_action && (
+        <div className="reponse-next">
+          <div className="suivi-row-label next-label">&gt; PROCHAINE ACTION</div>
+          <p>{data.prochaine_action}</p>
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 //  HISTORY PANEL
 // ─────────────────────────────────────────────────────────────
 function HistoryPanel({ onClose, onClearAll }) {
@@ -1405,8 +1508,9 @@ export default function App() {
               <div className="ai-bubble">
                 <div className="ai-avatar">&gt;_</div>
                 <div className="ai-content">
-                  {msg.data?.type === 'diagnostic' && <DiagnosticCard data={msg.data} />}
-                  {msg.data?.type === 'suivi'      && <SuiviCard      data={msg.data} />}
+                  {msg.data?.type === 'diagnostic'       && <DiagnosticCard data={msg.data} />}
+                  {msg.data?.type === 'suivi'           && <SuiviCard      data={msg.data} />}
+                  {msg.data?.type === 'reponse_question' && <ReponseCard   data={msg.data} />}
                   <div className="msg-time">{msg.timestamp} // ARIA</div>
                 </div>
               </div>
@@ -1423,7 +1527,7 @@ export default function App() {
                 <div className="typing-dots">
                   <span /><span /><span />
                 </div>
-                <span className="loading-text">ARIA PROCESSING IMAGE<span className="ellipsis-anim">...</span></span>
+                <span className="loading-text">ARIA PROCESSING<span className="ellipsis-anim">...</span></span>
               </div>
             </div>
           </div>
