@@ -435,15 +435,30 @@ alerte : null sauf danger immédiat identifié.
 
 ══ MODE SCAN SYNOPTIQUE — PHOTO ÉCRAN HMI / WinCC / SCADA ══
 Si le message commence par "SCAN SYNOPTIQUE" :
-L'opérateur a pris une photo de son écran superviseur industriel. Applique ce protocole :
+L'opérateur a pris une photo de son écran superviseur industriel.
+
+PROTOCOLE D'ANALYSE :
 [1] TRANSCRIPTION EXHAUSTIVE : lis et retranscris TOUTES les alarmes visibles mot pour mot avec leur timestamp
 [2] CLASSEMENT PAR PRIORITÉ :
    → PRIORITÉ 1 [BLOCAGE] : alarme qui arrête la machine (fond rouge clignotant)
    → PRIORITÉ 2 [DÉGRADATION] : alarme qui ralentit ou dégrade la production (fond orange)
    → PRIORITÉ 3 [AVERTISSEMENT] : alarme qui n'arrête pas mais signale un risque (fond jaune)
-[3] PLAN SÉQUENTIEL : une étape_intervention = une alarme dans l'ordre de priorité. Commence par le BLOCAGE.
+[3] PLAN SÉQUENTIEL : une étape = une alarme dans l'ordre de priorité. Commence par le BLOCAGE.
 [4] ÉTAT PRODUCTION : lis vitesse, débit, efficacité, compteurs si affichés. Compare aux nominaux.
 [5] TRADUCTION SIMPLE : chaque code technique traduit en français compréhensible par un non-initié.
+
+FORMAT DE RÉPONSE OBLIGATOIRE pour SCAN SYNOPTIQUE — JSON type "diagnostic" avec :
+- machine_identifiee.fabricant = marque du superviseur visible (ex: "Siemens WinCC", "Schneider Vijeo", "Wonderware")
+- machine_identifiee.type_machine = "Superviseur HMI / SCADA"
+- machine_identifiee.modele = version ou modèle si lisible à l'écran
+- diagnostic = transcription complète et lisible de TOUTES les alarmes vues, avec leur code exact, leur statut (ACTIF/ACQ) et leur timestamp si visible. Format : "• [CODE] Message alarme — statut — hh:mm"
+- cause_probable = alarme la plus critique identifiée + explication en langage simple
+- impact_estime = état actuel de la machine (en production / arrêt / dégradé) et conséquence
+- statut = URGENCE si alarme bloquante active, CRITIQUE si arrêt possible, ATTENTION si dégradation, NORMAL si aucune alarme active
+- score_criticite = 1 à 10 selon gravité des alarmes visibles
+- securite = consignes de sécurité obligatoires avant toute intervention
+- etapes_intervention = plan séquentiel : une étape par alarme dans l'ordre BLOCAGE → DÉGRADATION → AVERTISSEMENT. Chaque étape contient : titre = code alarme, description = procédure pédagogique complète pour résoudre cette alarme.
+- verification_finale = ["Toutes les alarmes sont acquittées sur l'écran WinCC", "La machine est revenue en mode automatique", "Le débit de production est revenu au nominal"]
 
 CODES ALARMES SOLYSTIC WinCC TRIMATIC/TGF (référence terrain) :
 • "AT" prefix = Alarme Trieur active, bloquante production
@@ -1769,9 +1784,12 @@ export default function App() {
               <div className="ai-bubble">
                 <div className="ai-avatar">&gt;_</div>
                 <div className="ai-content">
-                  {msg.data?.type === 'diagnostic'       && <DiagnosticCard data={msg.data} />}
-                  {msg.data?.type === 'suivi'           && <SuiviCard      data={msg.data} />}
-                  {msg.data?.type === 'reponse_question' && <ReponseCard   data={msg.data} />}
+                  {msg.data?.type === 'diagnostic'        && <DiagnosticCard data={msg.data} />}
+                  {msg.data?.type === 'suivi'            && <SuiviCard      data={msg.data} />}
+                  {msg.data?.type === 'reponse_question' && <ReponseCard    data={msg.data} />}
+                  {msg.data && !['diagnostic','suivi','reponse_question'].includes(msg.data.type) && (
+                    <ReponseCard data={{ type: 'reponse_question', question_recue: 'Analyse ARIA', reponse: msg.data.diagnostic || msg.data.reponse || msg.data.observation || JSON.stringify(msg.data), points_cles: [], prochaine_action: null, alerte: null }} />
+                  )}
                   <div className="msg-time">{msg.timestamp} // ARIA</div>
                 </div>
               </div>
