@@ -1570,36 +1570,40 @@ export default function App() {
       setPhase(prev => prev === 'ATTENTE' ? 'INTERVENTION' : prev)
 
       setMessages(prev => {
-        // Vérifier si on a déjà un diagnostic dans l'historique de la session
-        const alreadyHasDiag = prev.some(m => m.role === 'ai' && m.data?.type === 'diagnostic')
+        // Sauvegarder à la PREMIÈRE réponse ARIA de la session (quel que soit le type)
+        const isFirstAiResponse = !prev.some(m => m.role === 'ai')
 
-        // Sauvegarder dans l'historique si c'est le premier diagnostic reçu
-        if (!alreadyHasDiag && result.type === 'diagnostic') {
+        if (isFirstAiResponse) {
           const ORIGINE_CODE = { 'France':'FR','Allemagne':'DE','Pays-Bas':'NL','Suède':'SE','Chine':'CN','Japon':'JP','USA':'US','Italie':'IT','Corée':'KR','Inde':'IN','Australie':'AU','Espagne':'ES','Royaume-Uni':'UK','Autre':'--','Inconnu':'??' }
           const mach = result.machine_identifiee || {}
+          // Label affiché dans l'historique selon le type de réponse
+          const sessionLabel = result.type === 'diagnostic'
+            ? (mach.fabricant || 'Machine inconnue')
+            : result.type === 'reponse_question'
+            ? 'Question / Alarme'
+            : 'Intervention'
           const entry = {
             id: genId(),
             date: nowFull(),
-            fabricant: mach.fabricant || null,
+            fabricant: mach.fabricant || sessionLabel,
             modele: mach.modele || null,
             machineCode: ORIGINE_CODE[mach.origine] || '--',
-            type_machine: mach.type_machine || null,
+            type_machine: mach.type_machine || (result.type === 'reponse_question' ? 'Décodage alarme' : null),
             statut: result.statut || 'INCONNU',
             criticite: result.score_criticite ?? 0,
             sous_systeme: result.sous_systeme || null,
             temps: result.temps_estime || null,
-            resume: result.diagnostic || null,
+            resume: result.diagnostic || result.reponse || result.observation || null,
           }
           try {
             saveToHistory(entry)
             const updatedHist = loadHistory()
-            // Mettre à jour le compteur et les économies live (via setTimeout pour éviter le setState imbriqué)
             setTimeout(() => {
               setHistCount(updatedHist.length)
               setLiveSavings(calcTotalStats(updatedHist, parseInt(localStorage.getItem(TAUX_KEY) || '90')).totalEconomies)
               if (mach.fabricant) setMachineId(mach)
             }, 0)
-          } catch { /* localStorage plein — diagnostic quand même affiché */ }
+          } catch { /* localStorage plein — session affichée quand même */ }
         }
 
         return [...prev, { id: genId(), role: 'ai', data: result, timestamp: nowStr() }]
