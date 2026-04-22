@@ -2806,3 +2806,143 @@ body {
   margin-top: 0.4rem;
   line-height: 1.6;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE — max 640px
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* ── Layout global ── */
+  .app-shell { height: 100dvh; } /* dvh = tient compte de la barre nav mobile */
+
+  /* ── Header ── */
+  .shell-header {
+    padding: 0.4rem 0.75rem;
+    gap: 0.4rem;
+    row-gap: 0.3rem;
+  }
+  .hdr-logo { width: 28px; height: 28px; }
+  .logo-sym { font-size: 0.72rem; }
+  .hdr-title { font-size: 0.78rem; letter-spacing: 0.1em; }
+  .hdr-sub { display: none; }
+  .hdr-left { gap: 0.5rem; }
+  .hdr-clock { display: none; }
+  .faloria-link { display: none; }
+  .hdr-right { gap: 0.3rem; }
+  .phase-pill { padding: 0.18rem 0.4rem; font-size: 0.55rem; letter-spacing: 0.04em; }
+  .phase-dot { width: 6px; height: 6px; }
+  .btn-print, .btn-reset {
+    padding: 0.28rem 0.5rem;
+    font-size: 0.55rem;
+    gap: 0.2rem;
+    min-height: 30px;
+  }
+  .btn-print svg, .btn-reset svg { width: 11px; height: 11px; }
+  .btn-dashboard { padding: 0.28rem 0.45rem; font-size: 0.55rem; }
+  .btn-dashboard svg { display: none; }
+
+  /* ── Conversation ── */
+  .shell-conv { padding: 0.9rem 0.65rem 0.75rem; gap: 1rem; }
+  .user-bubble { max-width: 90%; }
+  .ai-bubble { max-width: 100%; gap: 0.4rem; }
+  .ai-avatar { width: 24px; height: 24px; font-size: 0.6rem; flex-shrink: 0; }
+
+  /* ── Input bar ── */
+  .shell-input { padding: 0.45rem 0.65rem 0.4rem; }
+  .input-prompt { display: none; }
+  .input-row { gap: 0.35rem; padding: 0.2rem 0.25rem; }
+  .btn-photo {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  .btn-mode {
+    height: 44px;
+    padding: 0 0.7rem;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+  }
+  .text-input {
+    font-size: 16px; /* empêche le zoom iOS au focus */
+    padding: 0.3rem 0.2rem;
+  }
+  .btn-send {
+    height: 44px;
+    min-width: 56px;
+    font-size: 0.7rem;
+  }
+  .input-hint { font-size: 0.48rem; margin-top: 0.3rem; }
+  .mode-strip { padding: 0.3rem 0.65rem; font-size: 0.6rem; }
+  .mode-strip-hint { display: none; }
+  .mode-strip-cancel { font-size: 0.55rem; padding: 0.12rem 0.4rem; }
+
+  /* ── Welcome screen ── */
+  .welcome-screen { padding: 0.75rem 0.5rem; }
+  .boot-window { margin-bottom: 1rem; }
+  .boot-titlebar { padding: 0.3rem 0.7rem; }
+  .boot-titlebar-text { font-size: 0.52rem; }
+  .boot-body { padding: 0.75rem 0.9rem; gap: 0.25rem; }
+  .boot-line { font-size: 0.65rem; gap: 0.5rem; }
+  /* Cacher les lignes moins importantes sur mobile */
+  .boot-line:nth-child(3),
+  .boot-line:nth-child(4),
+  .boot-line:nth-child(5) { display: none; }
+  .welcome-desc { font-size: 0.68rem; margin-bottom: 1rem; line-height: 1.6; }
+  .welcome-features { gap: 0.45rem; grid-template-columns: 1fr; }
+  .feat-item { padding: 0.65rem 0.75rem; gap: 0.6rem; }
+  .feat-title { font-size: 0.64rem; }
+  .feat-desc { font-size: 0.63rem; }
+  .welcome-compat { display: none; } /* trop long sur mobile */
+
+  /* ── Diagnostic card ── */
+  .dc-header { padding: 0.6rem 0.75rem; gap: 0.4rem; }
+  .dc-header-left { gap: 0.45rem; }
+  .status-label { font-size: 0.75rem; }
+  .crit-val { font-size: 0.95rem; }
+  .dc-block { padding: 0.7rem 0.75rem; }
+  .dc-machine-id { padding: 0.6rem 0.75rem; }
+  .machine-fabricant { font-size: 0.88rem; }
+  .machine-modele { font-size: 0.75rem; }
+  .etape-card { padding: 0.65rem 0.7rem; gap: 0.6rem; }
+  .etape-num { width: 24px; height: 24px; }
+  .etape-desc { font-size: 0.78rem; }
+
+  /* ── Panels History + Dashboard ── */
+  .hist-overlay, .dash-overlay { padding: 0; }
+  .hist-panel, .dash-panel {
+    width: 100%;
+    max-width: 100%;
+    border-left: none;
+    border-right: none;
+    height: 100dvh;
+  }
+  .hist-header, .dash-header {
+    padding: 0.75rem 1rem;
+  }
+  .hist-title { font-size: 0.72rem; }
+  .dash-title { font-size: 0.75rem; letter-spacing: 0.08em; }
+  .dash-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+  .dash-kpi-card { padding: 0.7rem 0.75rem; }
+  .dash-kpi-val { font-size: 1.4rem; }
+  .dash-kpi-label { font-size: 0.56rem; }
+  .dash-two-col { grid-template-columns: 1fr !important; }
+  .dash-body { padding: 0 0 1rem; }
+  .dash-section { margin: 0 0.75rem 0.75rem; }
+  .dash-site-input { width: 180px; font-size: 0.65rem; }
+
+  /* ── Reponse card ── */
+  .reponse-header { padding: 0.6rem 0.75rem; }
+  .reponse-text { font-size: 0.8rem; }
+
+  /* ── Mode badges ── */
+  .mode-badge { font-size: 0.52rem; }
+
+  /* ── Preview image ── */
+  .input-preview-bar { padding: 0.3rem 0.5rem; gap: 0.4rem; }
+  .input-preview-thumb img { width: 34px; height: 34px; }
+  .input-preview-name { font-size: 0.58rem; }
+}
