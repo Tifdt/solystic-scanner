@@ -789,12 +789,24 @@ ${suivis.length ? `
 </body>
 </html>`
 
+  // Ouvre dans un nouvel onglet, avec fallback téléchargement si popup bloqué
   const w = window.open('', '_blank')
-  if (!w) return
-  w.document.write(html)
-  w.document.close()
-  w.focus()
-  setTimeout(() => { w.print() }, 400)
+  if (w) {
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    setTimeout(() => { w.print() }, 400)
+  } else {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `ARIA-rapport-${new Date().toISOString().slice(0, 10)}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1305,8 +1317,6 @@ function DashboardPanel({ onClose }) {
   const sysStats = getSousSystemeStats(entries)
   const insights = getAriaInsights(entries)
   const maxSys   = sysStats[0]?.[1] || 1
-  const expertTotal = stats.totalSessions * 4 * taux
-  const ariaTotal   = Math.max(0, expertTotal - stats.totalEconomies)
 
   return (
     <div className="dash-overlay" onClick={onClose}>
@@ -1391,29 +1401,6 @@ function DashboardPanel({ onClose }) {
               })}
             </div>
 
-          </div>
-
-          {/* ── Comparatif ARIA vs Expert ── */}
-          <div className="dash-section">
-            <div className="dash-section-title">// ARIA vs EXPERT EXTERNE — COMPARATIF FINANCIER</div>
-            <div className="dash-comp-grid">
-              <div className="dash-comp-col dash-comp-col--aria">
-                <div className="dash-comp-label">AVEC ARIA</div>
-                <div className="dash-comp-val" style={{ color: '#00ff41' }}>{ariaTotal.toLocaleString('fr-FR')}€</div>
-                <div className="dash-comp-detail">{stats.totalAriaHours}h opérateur × {Math.round(taux / 4)}€/h</div>
-              </div>
-              <div className="dash-comp-vs">VS</div>
-              <div className="dash-comp-col dash-comp-col--expert">
-                <div className="dash-comp-label">SANS ARIA (expert externe)</div>
-                <div className="dash-comp-val" style={{ color: '#ff3333' }}>{expertTotal.toLocaleString('fr-FR')}€</div>
-                <div className="dash-comp-detail">{stats.totalSessions}× min. 4h à {taux}€/h</div>
-              </div>
-              <div className="dash-comp-col dash-comp-col--eco">
-                <div className="dash-comp-label">ÉCONOMIE NETTE</div>
-                <div className="dash-comp-val" style={{ color: '#ffb000' }}>{stats.totalEconomies.toLocaleString('fr-FR')}€</div>
-                <div className="dash-comp-detail">ROI démontré et mesurable</div>
-              </div>
-            </div>
           </div>
 
           {/* ── ARIA Insights ── */}
@@ -1535,31 +1522,46 @@ export default function App() {
       const result = await callAI(newApiHistory, apiKey)
       const updatedApiHistory = [...newApiHistory, { role: 'assistant', content: JSON.stringify(result) }]
       setApiHistory(updatedApiHistory)
-      setMessages(prev => [...prev, { id: genId(), role: 'ai', data: result, timestamp: nowStr() }])
 
-      if (isFirst && result.type === 'diagnostic') {
-        const mach = result.machine_identifiee || {}
-        if (mach.fabricant) setMachineId(mach)
-        setPhase('INTERVENTION')
-        const ORIGINE_CODE = { 'France':'FR','Allemagne':'DE','Pays-Bas':'NL','Suède':'SE','Chine':'CN','Japon':'JP','USA':'US','Italie':'IT','Corée':'KR','Inde':'IN','Australie':'AU','Espagne':'ES','Royaume-Uni':'UK','Autre':'--','Inconnu':'??' }
-        const entry = {
-          id: genId(),
-          date: nowFull(),
-          fabricant: mach.fabricant || null,
-          modele: mach.modele || null,
-          machineCode: ORIGINE_CODE[mach.origine] || '--',
-          type_machine: mach.type_machine || null,
-          statut: result.statut || 'INCONNU',
-          criticite: result.score_criticite ?? 0,
-          sous_systeme: result.sous_systeme || null,
-          temps: result.temps_estime || null,
-          resume: result.diagnostic || null,
+      // Toujours passer en INTERVENTION dès la première réponse IA reçue
+      setPhase(prev => prev === 'ATTENTE' ? 'INTERVENTION' : prev)
+
+      setMessages(prev => {
+        // Vérifier si on a déjà un diagnostic dans l'historique de la session
+        const alreadyHasDiag = prev.some(m => m.role === 'ai' && m.data?.type === 'diagnostic')
+
+        // Sauvegarder dans l'historique si c'est le premier diagnostic reçu
+        if (!alreadyHasDiag && result.type === 'diagnostic') {
+          const ORIGINE_CODE = { 'France':'FR','Allemagne':'DE','Pays-Bas':'NL','Suède':'SE','Chine':'CN','Japon':'JP','USA':'US','Italie':'IT','Corée':'KR','Inde':'IN','Australie':'AU','Espagne':'ES','Royaume-Uni':'UK','Autre':'--','Inconnu':'??' }
+          const mach = result.machine_identifiee || {}
+          const entry = {
+            id: genId(),
+            date: nowFull(),
+            fabricant: mach.fabricant || null,
+            modele: mach.modele || null,
+            machineCode: ORIGINE_CODE[mach.origine] || '--',
+            type_machine: mach.type_machine || null,
+            statut: result.statut || 'INCONNU',
+            criticite: result.score_criticite ?? 0,
+            sous_systeme: result.sous_systeme || null,
+            temps: result.temps_estime || null,
+            resume: result.diagnostic || null,
+          }
+          try {
+            saveToHistory(entry)
+            const updatedHist = loadHistory()
+            // Mettre à jour le compteur et les économies live (via setTimeout pour éviter le setState imbriqué)
+            setTimeout(() => {
+              setHistCount(updatedHist.length)
+              setLiveSavings(calcTotalStats(updatedHist, parseInt(localStorage.getItem(TAUX_KEY) || '90')).totalEconomies)
+              if (mach.fabricant) setMachineId(mach)
+            }, 0)
+          } catch { /* localStorage plein — diagnostic quand même affiché */ }
         }
-        saveToHistory(entry)
-        const updatedHist = loadHistory()
-        setHistCount(updatedHist.length)
-        setLiveSavings(calcTotalStats(updatedHist, parseInt(localStorage.getItem(TAUX_KEY) || '90')).totalEconomies)
-      }
+
+        return [...prev, { id: genId(), role: 'ai', data: result, timestamp: nowStr() }]
+      })
+
       if (result.type === 'suivi' && result.progression >= 100) setPhase('TERMINE')
     } catch (e) {
       setError(`ERR :: ${e.message}`)
@@ -1570,8 +1572,13 @@ export default function App() {
   }
 
   function handleReset() {
-    setMessages([]); setApiHistory([]); setPhase('ATTENTE')
-    setMachineId(null); setInputImage(null); setInputText(''); setError(null)
+    setMessages([])
+    setApiHistory([])
+    setPhase('ATTENTE')
+    setMachineId(null)
+    setInputImage(null)
+    setInputText('')
+    setError(null)
   }
 
   function handleKeyDown(e) {
@@ -1659,7 +1666,7 @@ export default function App() {
               IMPRIMER
             </button>
           )}
-          {phase !== 'ATTENTE' && (
+          {messages.length > 0 && (
             <button className="btn-reset" onClick={handleReset}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="1 4 1 10 7 10"/>
