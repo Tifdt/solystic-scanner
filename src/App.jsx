@@ -479,6 +479,76 @@ function nowFull() {
 function genId() { return Math.random().toString(36).slice(2, 10) }
 
 // ─────────────────────────────────────────────────────────────
+//  SAVINGS — calcul ROI
+// ─────────────────────────────────────────────────────────────
+const TAUX_KEY = 'aria-taux-horaire'
+const SITE_KEY = 'aria-site-name'
+
+function parseTempsMinutes(tempsStr) {
+  if (!tempsStr) return 60
+  const str = tempsStr.toLowerCase().replace(/[–—]/g, '-')
+  const heureMatch = str.match(/(\d+)(?:\s*-\s*(\d+))?\s*h/)
+  if (heureMatch) {
+    const a = parseInt(heureMatch[1]), b = heureMatch[2] ? parseInt(heureMatch[2]) : a
+    return Math.round((a + b) / 2 * 60)
+  }
+  const minMatch = str.match(/(\d+)(?:\s*-\s*(\d+))?\s*min/)
+  if (minMatch) {
+    const a = parseInt(minMatch[1]), b = minMatch[2] ? parseInt(minMatch[2]) : a
+    return Math.round((a + b) / 2)
+  }
+  return 60
+}
+
+function calcSavingsEntry(entry, tauxHoraire) {
+  // Sans ARIA : déplacement + diagnostic expert = 4h minimum facturées
+  const expertCost = 4 * tauxHoraire
+  // Avec ARIA : temps réparation opérateur au quart du taux expert
+  const ariaCost = (parseTempsMinutes(entry.temps) / 60) * (tauxHoraire / 4)
+  return Math.round(expertCost - ariaCost)
+}
+
+function calcTotalStats(entries, tauxHoraire) {
+  let totalAriaMinutes = 0, totalEconomies = 0
+  entries.forEach(e => {
+    totalAriaMinutes += parseTempsMinutes(e.temps)
+    totalEconomies += calcSavingsEntry(e, tauxHoraire)
+  })
+  return {
+    totalSessions: entries.length,
+    totalAriaMinutes,
+    totalAriaHours: Math.round(totalAriaMinutes / 60 * 10) / 10,
+    totalEconomies,
+    expertHoursEquiv: entries.length * 4,
+  }
+}
+
+function getSousSystemeStats(entries) {
+  const counts = {}
+  entries.forEach(e => { if (e.sous_systeme) counts[e.sous_systeme] = (counts[e.sous_systeme] || 0) + 1 })
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6)
+}
+
+function getAriaInsights(entries) {
+  const insights = []
+  if (entries.length < 2) return insights
+  const sysStats = getSousSystemeStats(entries)
+  if (sysStats[0]?.[1] >= 3)
+    insights.push(`PATTERN SYSTÉMIQUE : "${sysStats[0][0]}" en panne ${sysStats[0][1]}x — audit de cause racine recommandé pour éviter récidive.`)
+  const fab = {}
+  entries.forEach(e => { if (e.fabricant) fab[e.fabricant] = (fab[e.fabricant] || 0) + 1 })
+  const topFab = Object.entries(fab).sort((a, b) => b[1] - a[1])[0]
+  if (topFab?.[1] >= 3)
+    insights.push(`MACHINE RÉCURRENTE : ${topFab[0]} compte ${topFab[1]} pannes — plan de maintenance préventive prioritaire recommandé.`)
+  const avgCrit = entries.reduce((s, e) => s + (e.criticite || 0), 0) / entries.length
+  if (avgCrit >= 6)
+    insights.push(`CRITICITÉ ÉLEVÉE : moyenne ${avgCrit.toFixed(1)}/10 sur l'ensemble des interventions — renforcer les rondes préventives.`)
+  if (entries.length >= 5)
+    insights.push(`MONTÉE EN COMPÉTENCE : ${entries.length} interventions réalisées de façon autonome — l'équipe n'a plus besoin d'expert pour ces pannes.`)
+  return insights
+}
+
+// ─────────────────────────────────────────────────────────────
 //  HISTORY — localStorage
 // ─────────────────────────────────────────────────────────────
 const HISTORY_KEY = 'aria-v5-history'
@@ -1219,6 +1289,161 @@ function HistoryPanel({ onClose, onClearAll }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  DASHBOARD PANEL
+// ─────────────────────────────────────────────────────────────
+const STATUT_COLOR_MAP = { NORMAL: '#00ff41', ATTENTION: '#ffb000', CRITIQUE: '#ff3333', URGENCE: '#ff00ff' }
+
+function DashboardPanel({ onClose }) {
+  const [entries]     = useState(() => loadHistory())
+  const [taux, setTaux] = useState(() => parseInt(localStorage.getItem(TAUX_KEY) || '90'))
+  const [site, setSite] = useState(() => localStorage.getItem(SITE_KEY) || 'Site de maintenance')
+
+  function saveTaux(v) { const n = Math.max(40, Math.min(300, parseInt(v) || 90)); setTaux(n); localStorage.setItem(TAUX_KEY, String(n)) }
+  function saveSite(v) { setSite(v); localStorage.setItem(SITE_KEY, v) }
+
+  const stats    = calcTotalStats(entries, taux)
+  const sysStats = getSousSystemeStats(entries)
+  const insights = getAriaInsights(entries)
+  const maxSys   = sysStats[0]?.[1] || 1
+  const expertTotal = stats.totalSessions * 4 * taux
+  const ariaTotal   = Math.max(0, expertTotal - stats.totalEconomies)
+
+  return (
+    <div className="dash-overlay" onClick={onClose}>
+      <div className="dash-panel" onClick={e => e.stopPropagation()}>
+
+        {/* ── HEADER ── */}
+        <div className="dash-header">
+          <div>
+            <div className="dash-title">ARIA — TABLEAU DE BORD CHEF DE MAINTENANCE</div>
+            <input className="dash-site-input" value={site} onChange={e => saveSite(e.target.value)} placeholder="Nom du site..." />
+          </div>
+          <div className="dash-header-right">
+            <div className="dash-taux-wrap">
+              <span className="dash-taux-label">Taux expert&nbsp;:</span>
+              <input type="number" className="dash-taux-input" value={taux} min={40} max={300} onChange={e => saveTaux(e.target.value)} />
+              <span className="dash-taux-unit">€/h</span>
+            </div>
+            <button className="hist-btn-close" onClick={onClose}>FERMER</button>
+          </div>
+        </div>
+
+        <div className="dash-body">
+
+          {/* ── KPI ── */}
+          <div className="dash-kpi-grid">
+            <div className="dash-kpi-card">
+              <div className="dash-kpi-val" style={{ color: '#00ff41' }}>{stats.totalSessions}</div>
+              <div className="dash-kpi-label">INTERVENTIONS AUTONOMES</div>
+              <div className="dash-kpi-sub">sans expert externe</div>
+            </div>
+            <div className="dash-kpi-card">
+              <div className="dash-kpi-val" style={{ color: '#00bfff' }}>{stats.expertHoursEquiv}h</div>
+              <div className="dash-kpi-label">HEURES EXPERT ÉCONOMISÉES</div>
+              <div className="dash-kpi-sub">déplacements + diagnostics évités</div>
+            </div>
+            <div className="dash-kpi-card">
+              <div className="dash-kpi-val" style={{ color: '#ffb000' }}>{stats.totalEconomies.toLocaleString('fr-FR')}€</div>
+              <div className="dash-kpi-label">ÉCONOMIES RÉALISÉES</div>
+              <div className="dash-kpi-sub">vs coût expert externe</div>
+            </div>
+            <div className="dash-kpi-card">
+              <div className="dash-kpi-val" style={{ color: '#00ff41' }}>{stats.totalSessions > 0 ? '100%' : '—'}</div>
+              <div className="dash-kpi-label">TAUX D'AUTONOMIE ÉQUIPE</div>
+              <div className="dash-kpi-sub">pannes résolues sans spécialiste</div>
+            </div>
+          </div>
+
+          <div className="dash-two-col">
+
+            {/* ── Dernières interventions ── */}
+            <div className="dash-section">
+              <div className="dash-section-title">// DERNIÈRES INTERVENTIONS</div>
+              {entries.length === 0 && <div className="dash-empty">// Aucune intervention enregistrée</div>}
+              {entries.slice(0, 7).map(e => (
+                <div key={e.id} className="dash-interv-row">
+                  <div className="dash-interv-left">
+                    {e.machineCode && <span className="hist-code">[{e.machineCode}]</span>}
+                    <span className="dash-interv-machine">{e.fabricant || 'Inconnu'}</span>
+                    {e.type_machine && <span className="dash-interv-type">{e.type_machine}</span>}
+                  </div>
+                  <div className="dash-interv-right">
+                    <span style={{ color: STATUT_COLOR_MAP[e.statut] || '#888', fontSize: '0.68rem' }}>[{e.statut || '?'}]</span>
+                    <span className="dash-interv-eco">+{calcSavingsEntry(e, taux).toLocaleString('fr-FR')}€</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Sous-systèmes ── */}
+            <div className="dash-section">
+              <div className="dash-section-title">// PANNES PAR SOUS-SYSTÈME</div>
+              {sysStats.length === 0 && <div className="dash-empty">// Aucune donnée</div>}
+              {sysStats.map(([sys, count]) => {
+                const bars = Math.round((count / maxSys) * 18)
+                return (
+                  <div key={sys} className="dash-sys-row">
+                    <span className="dash-sys-name">{sys.replace('_', ' ')}</span>
+                    <span className="dash-sys-bar">{'█'.repeat(bars)}{'░'.repeat(18 - bars)}</span>
+                    <span className="dash-sys-pct">{Math.round(count / entries.length * 100)}%</span>
+                  </div>
+                )
+              })}
+            </div>
+
+          </div>
+
+          {/* ── Comparatif ARIA vs Expert ── */}
+          <div className="dash-section">
+            <div className="dash-section-title">// ARIA vs EXPERT EXTERNE — COMPARATIF FINANCIER</div>
+            <div className="dash-comp-grid">
+              <div className="dash-comp-col dash-comp-col--aria">
+                <div className="dash-comp-label">AVEC ARIA</div>
+                <div className="dash-comp-val" style={{ color: '#00ff41' }}>{ariaTotal.toLocaleString('fr-FR')}€</div>
+                <div className="dash-comp-detail">{stats.totalAriaHours}h opérateur × {Math.round(taux / 4)}€/h</div>
+              </div>
+              <div className="dash-comp-vs">VS</div>
+              <div className="dash-comp-col dash-comp-col--expert">
+                <div className="dash-comp-label">SANS ARIA (expert externe)</div>
+                <div className="dash-comp-val" style={{ color: '#ff3333' }}>{expertTotal.toLocaleString('fr-FR')}€</div>
+                <div className="dash-comp-detail">{stats.totalSessions}× min. 4h à {taux}€/h</div>
+              </div>
+              <div className="dash-comp-col dash-comp-col--eco">
+                <div className="dash-comp-label">ÉCONOMIE NETTE</div>
+                <div className="dash-comp-val" style={{ color: '#ffb000' }}>{stats.totalEconomies.toLocaleString('fr-FR')}€</div>
+                <div className="dash-comp-detail">ROI démontré et mesurable</div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── ARIA Insights ── */}
+          {insights.length > 0 && (
+            <div className="dash-section dash-insights">
+              <div className="dash-section-title">// ARIA INSIGHTS — RECOMMANDATIONS AUTOMATIQUES</div>
+              {insights.map((ins, i) => (
+                <div key={i} className="dash-insight-row">
+                  <span className="dash-insight-idx">[{String(i + 1).padStart(2, '0')}]</span>
+                  <span>{ins}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {entries.length === 0 && (
+            <div className="dash-onboarding">
+              <div className="dash-section-title">// COMMENT ALIMENTER CE TABLEAU DE BORD</div>
+              <p>Chaque diagnostic ARIA est automatiquement enregistré ici.<br />
+              Envoyez une première photo de machine pour commencer à accumuler des données et mesurer votre ROI en temps réel.</p>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
 export default function App() {
@@ -1232,8 +1457,14 @@ export default function App() {
   const [inputText, setInputText]   = useState('')
   const [dragging, setDragging]     = useState(false)
   const [time, setTime]             = useState(nowStr())
-  const [showHistory, setShowHistory] = useState(false)
-  const [histCount, setHistCount]   = useState(() => loadHistory().length)
+  const [showHistory, setShowHistory]     = useState(false)
+  const [showDashboard, setShowDashboard] = useState(false)
+  const [histCount, setHistCount]         = useState(() => loadHistory().length)
+  const [liveSavings, setLiveSavings]     = useState(() => {
+    const h = loadHistory()
+    const t = parseInt(localStorage.getItem(TAUX_KEY) || '90')
+    return h.length > 0 ? calcTotalStats(h, t).totalEconomies : 0
+  })
 
   const fileRef   = useRef(null)
   const bottomRef = useRef(null)
@@ -1325,7 +1556,9 @@ export default function App() {
           resume: result.diagnostic || null,
         }
         saveToHistory(entry)
-        setHistCount(loadHistory().length)
+        const updatedHist = loadHistory()
+        setHistCount(updatedHist.length)
+        setLiveSavings(calcTotalStats(updatedHist, parseInt(localStorage.getItem(TAUX_KEY) || '90')).totalEconomies)
       }
       if (result.type === 'suivi' && result.progression >= 100) setPhase('TERMINE')
     } catch (e) {
@@ -1355,8 +1588,13 @@ export default function App() {
       {showHistory && (
         <HistoryPanel
           onClose={() => setShowHistory(false)}
-          onClearAll={() => setHistCount(0)}
+          onClearAll={() => { setHistCount(0); setLiveSavings(0) }}
         />
+      )}
+
+      {/* ══ DASHBOARD ══ */}
+      {showDashboard && (
+        <DashboardPanel onClose={() => setShowDashboard(false)} />
       )}
 
       {/* ══ HEADER ══ */}
@@ -1384,6 +1622,24 @@ export default function App() {
             {phase === 'TERMINE'      && '[COMPLETE]'}
           </div>
           <span className="faloria-link">FALORIA &amp; Co</span>
+
+          {/* Live savings counter */}
+          {liveSavings > 0 && (
+            <div className="hdr-savings" onClick={() => setShowDashboard(true)} title="Ouvrir le tableau de bord">
+              <span className="hdr-savings-label">ÉCO.</span>
+              <span className="hdr-savings-val">{liveSavings.toLocaleString('fr-FR')}€</span>
+            </div>
+          )}
+
+          {/* Dashboard button */}
+          <button className="btn-dashboard" onClick={() => setShowDashboard(true)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+            </svg>
+            DASHBOARD
+          </button>
+
           <button className="btn-print" onClick={() => setShowHistory(true)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -1422,7 +1678,7 @@ export default function App() {
           <div className="welcome-screen">
             <div className="boot-window">
               <div className="boot-titlebar">
-                <span className="boot-titlebar-text">ARIA UNIVERSAL SORTER EXPERT — INITIALISATION v5.0</span>
+                <span className="boot-titlebar-text">ARIA UNIVERSAL SORTER EXPERT — INITIALISATION v5.2</span>
               </div>
               <div className="boot-body">
                 <div className="boot-line"><span className="boot-ok">[  OK  ]</span> ARIA Neural Core v5.0 — CHARGE</div>
