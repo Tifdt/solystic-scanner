@@ -2377,22 +2377,8 @@ body {
 .mesure-observe strong { color: var(--amber); text-shadow: 0 0 6px rgba(255,176,0,0.4); }
 
 /* ══════════════════════════════════════════════════════════════
-   HEADER — LIVE SAVINGS + DASHBOARD BTN
+   HEADER — DASHBOARD BTN
 ══════════════════════════════════════════════════════════════ */
-.hdr-savings {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.6rem;
-  border: 1px solid rgba(255,176,0,0.4);
-  background: rgba(255,176,0,0.06);
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.hdr-savings:hover { border-color: var(--amber); }
-.hdr-savings-label { font-size: 0.58rem; letter-spacing: 0.12em; color: #996600; }
-.hdr-savings-val   { font-size: 0.78rem; color: var(--amber); font-weight: 700; text-shadow: 0 0 8px rgba(255,176,0,0.6); }
-
 .btn-dashboard {
   display: flex;
   align-items: center;
@@ -2471,20 +2457,6 @@ body {
 .dash-site-input:focus { border-bottom-color: var(--green); color: var(--text); }
 
 .dash-header-right { display: flex; align-items: center; gap: 1rem; }
-.dash-taux-wrap    { display: flex; align-items: center; gap: 0.4rem; }
-.dash-taux-label   { font-size: 0.65rem; color: var(--text-dim); }
-.dash-taux-input   {
-  width: 56px;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  color: var(--green);
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  padding: 0.2rem 0.4rem;
-  text-align: center;
-  outline: none;
-}
-.dash-taux-unit { font-size: 0.65rem; color: var(--text-dim); }
 
 .dash-body {
   flex: 1;
@@ -2580,7 +2552,7 @@ body {
 .dash-interv-right { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
 .dash-interv-machine { color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
 .dash-interv-type { font-size: 0.62rem; color: var(--text-dim); white-space: nowrap; }
-.dash-interv-eco  { font-size: 0.72rem; color: var(--amber); font-weight: 700; }
+.dash-interv-crit { font-size: 0.62rem; color: var(--text-dim); }
 
 /* Sous-systèmes */
 .dash-sys-row {
