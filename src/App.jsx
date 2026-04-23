@@ -492,6 +492,7 @@ async function callAI(apiHistory, apiKey) {
     body: JSON.stringify({
       model: 'gpt-4o',
       max_tokens: 4000,
+      response_format: { type: 'json_object' },
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...apiHistory],
     }),
   })
@@ -752,11 +753,11 @@ ${diag.etapes_intervention?.length ? `
 <div class="section">
   <div class="section-title">// PROCEDURE D'INTERVENTION — ${diag.etapes_intervention.length} ETAPES</div>
   <div class="section-body">
-    ${diag.etapes_intervention.map(e => `
+    ${diag.etapes_intervention.map((e, i) => `
       <div class="etape">
-        <div class="etape-n">${String(e.numero).padStart(2,'0')}</div>
+        <div class="etape-n">${String(e.numero ?? (i + 1)).padStart(2,'0')}</div>
         <div class="etape-body">
-          <div class="etape-titre">${e.titre.toUpperCase()}</div>
+          <div class="etape-titre">${(e.titre || 'ETAPE').toUpperCase()}</div>
           <div class="etape-desc">${e.description}</div>
           ${e.valeur_a_controler ? `<div class="etape-critere">CRITERE : ${e.valeur_a_controler}</div>` : ''}
           ${e.attention ? `<div class="etape-attention">ATTENTION : ${e.attention}</div>` : ''}
@@ -1083,7 +1084,7 @@ function DiagnosticCard({ data }) {
             {data.etapes_intervention.map((e, i) => (
               <div key={e.numero ?? i} className="etape-card">
                 <div className="etape-num">
-                  <span>{String(e.numero).padStart(2, '0')}</span>
+                  <span>{String(e.numero ?? (i + 1)).padStart(2, '0')}</span>
                 </div>
                 <div className="etape-body">
                   <div className="etape-titre">&gt; {(e.titre || 'ETAPE').toUpperCase()}</div>
