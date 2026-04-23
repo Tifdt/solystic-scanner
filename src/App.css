@@ -1670,6 +1670,19 @@ body {
 .hist-btn-clear:hover { color: var(--amber); border-color: #cc8800; }
 .hist-btn-del { font-size: 0.52rem; padding: 0.18rem 0.45rem; }
 .hist-btn-del:hover { color: var(--red); border-color: #660000; }
+.hist-btn-reopen {
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  padding: 0.18rem 0.55rem;
+  background: transparent;
+  border: 1px solid #00aa22;
+  color: var(--green);
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.hist-btn-reopen:hover { background: rgba(0,255,65,0.08); border-color: var(--green); }
 
 .hist-body {
   flex: 1;

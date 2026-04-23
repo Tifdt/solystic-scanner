@@ -596,6 +596,28 @@ function deleteHistoryEntry(id) {
 function clearHistory() {
   localStorage.removeItem(HISTORY_KEY)
 }
+function updateHistoryConversation(sessionId, messages, apiHistory, machineId) {
+  if (!sessionId) return
+  const hist = loadHistory()
+  const idx = hist.findIndex(e => e.id === sessionId)
+  if (idx === -1) return
+  hist[idx]._messages = messages.map(m => ({
+    ...m,
+    imagePreview: m.imagePreview ? '__image__' : null,
+  }))
+  hist[idx]._apiHistory = apiHistory.map(msg => ({
+    ...msg,
+    content: Array.isArray(msg.content)
+      ? msg.content.map(c =>
+          c.type === 'image_url'
+            ? { type: 'text', text: '[Photo analysée — non disponible à la réouverture]' }
+            : c
+        )
+      : msg.content,
+  }))
+  if (machineId) hist[idx]._machineId = machineId
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(hist))
+}
 
 // ─────────────────────────────────────────────────────────────
 //  PDF EXPORT
@@ -1261,7 +1283,7 @@ function ReponseCard({ data }) {
 // ─────────────────────────────────────────────────────────────
 //  HISTORY PANEL
 // ─────────────────────────────────────────────────────────────
-function HistoryPanel({ onClose, onClearAll, onCountUpdate }) {
+function HistoryPanel({ onClose, onClearAll, onCountUpdate, onReopen }) {
   const [entries, setEntries] = useState(() => loadHistory())
 
   function handleDelete(id) {
@@ -1300,7 +1322,14 @@ function HistoryPanel({ onClose, onClearAll, onCountUpdate }) {
             <div key={e.id} className="hist-entry">
               <div className="hist-entry-header">
                 <div className="hist-entry-date">{e.date}</div>
-                <button className="hist-btn-del" onClick={() => handleDelete(e.id)}>SUPPR</button>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  {e._messages && (
+                    <button className="hist-btn-reopen" onClick={() => onReopen(e)}>
+                      ▶ REPRENDRE
+                    </button>
+                  )}
+                  <button className="hist-btn-del" onClick={() => handleDelete(e.id)}>SUPPR</button>
+                </div>
               </div>
               <div className="hist-entry-machine">
                 {e.machineCode && <span className="hist-code">[{e.machineCode}]</span>}
@@ -1474,10 +1503,11 @@ export default function App() {
   const [showDashboard, setShowDashboard] = useState(false)
   const [histCount, setHistCount] = useState(() => loadHistory().length)
 
-  const fileRef    = useRef(null)
-  const hmiFileRef = useRef(null)
-  const bottomRef  = useRef(null)
-  const textRef    = useRef(null)
+  const fileRef          = useRef(null)
+  const hmiFileRef       = useRef(null)
+  const bottomRef        = useRef(null)
+  const textRef          = useRef(null)
+  const currentSessionId = useRef(null)
 
   useEffect(() => {
     const t = setInterval(() => setTime(nowStr()), 1000)
@@ -1558,20 +1588,22 @@ export default function App() {
       setPhase(prev => prev === 'ATTENTE' ? 'INTERVENTION' : prev)
 
       setMessages(prev => {
-        // Sauvegarder à la PREMIÈRE réponse ARIA de la session (quel que soit le type)
         const isFirstAiResponse = !prev.some(m => m.role === 'ai')
+        const aiMsg = { id: genId(), role: 'ai', data: result, timestamp: nowStr() }
+        const nextMessages = [...prev, aiMsg]
 
         if (isFirstAiResponse) {
           const ORIGINE_CODE = { 'France':'FR','Allemagne':'DE','Pays-Bas':'NL','Suède':'SE','Chine':'CN','Japon':'JP','USA':'US','Italie':'IT','Corée':'KR','Inde':'IN','Australie':'AU','Espagne':'ES','Royaume-Uni':'UK','Autre':'--','Inconnu':'??' }
           const mach = result.machine_identifiee || {}
-          // Label affiché dans l'historique selon le type de réponse
           const sessionLabel = result.type === 'diagnostic'
             ? (mach.fabricant || 'Machine inconnue')
             : result.type === 'reponse_question'
             ? 'Question / Alarme'
             : 'Intervention'
+          const entryId = genId()
+          currentSessionId.current = entryId
           const entry = {
-            id: genId(),
+            id: entryId,
             date: nowFull(),
             fabricant: mach.fabricant || sessionLabel,
             modele: mach.modele || null,
@@ -1585,15 +1617,20 @@ export default function App() {
           }
           try {
             saveToHistory(entry)
+            updateHistoryConversation(entryId, nextMessages, updatedApiHistory, mach.fabricant ? mach : null)
             const updatedHist = loadHistory()
             setTimeout(() => {
               setHistCount(updatedHist.length)
               if (mach.fabricant) setMachineId(mach)
             }, 0)
           } catch { /* localStorage plein — session affichée quand même */ }
+        } else {
+          try {
+            updateHistoryConversation(currentSessionId.current, nextMessages, updatedApiHistory, null)
+          } catch {}
         }
 
-        return [...prev, { id: genId(), role: 'ai', data: result, timestamp: nowStr() }]
+        return nextMessages
       })
 
       if (result.type === 'suivi' && result.progression >= 100) setPhase('TERMINE')
@@ -1614,6 +1651,21 @@ export default function App() {
     setInputText('')
     setInputMode('normal')
     setError(null)
+    currentSessionId.current = null
+  }
+
+  function handleReopen(entry) {
+    if (!entry._messages || !entry._apiHistory) return
+    setMessages(entry._messages)
+    setApiHistory(entry._apiHistory)
+    setPhase('INTERVENTION')
+    setMachineId(entry._machineId || null)
+    setInputImage(null)
+    setInputText('')
+    setInputMode('normal')
+    setError(null)
+    currentSessionId.current = entry.id
+    setShowHistory(false)
   }
 
   function handleKeyDown(e) {
@@ -1632,6 +1684,7 @@ export default function App() {
           onClose={() => setShowHistory(false)}
           onClearAll={() => setHistCount(0)}
           onCountUpdate={(n) => setHistCount(n)}
+          onReopen={handleReopen}
         />
       )}
 
