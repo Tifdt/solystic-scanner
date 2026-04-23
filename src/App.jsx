@@ -500,10 +500,23 @@ async function callAI(apiHistory, apiKey) {
     throw new Error(err?.error?.message || `ERR_API_${resp.status}`)
   }
   const data = await resp.json()
-  const text = data.choices?.[0]?.message?.content || '{}'
+  const text = data.choices?.[0]?.message?.content || ''
+  if (!text) throw new Error('Réponse vide — réessayez')
+
+  // Tente 1 : JSON direct
+  try {
+    const clean = text.trim()
+    if (clean.startsWith('{')) return JSON.parse(clean)
+  } catch {}
+
+  // Tente 2 : extraire le 1er objet JSON du texte
   const match = text.match(/\{[\s\S]*\}/)
-  if (!match) throw new Error('PARSE_ERROR: réponse ARIA corrompue')
-  return JSON.parse(match[0])
+  if (!match) throw new Error('Format inattendu — réessayez')
+  try {
+    return JSON.parse(match[0])
+  } catch {
+    throw new Error('Format invalide — réessayez')
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1067,13 +1080,13 @@ function DiagnosticCard({ data }) {
         <div className="dc-block">
           <div className="dc-block-tag">&gt;_ PROCEDURE INTERVENTION // {data.etapes_intervention.length} ETAPES</div>
           <div className="etapes-list">
-            {data.etapes_intervention.map((e) => (
-              <div key={e.numero} className="etape-card">
+            {data.etapes_intervention.map((e, i) => (
+              <div key={e.numero ?? i} className="etape-card">
                 <div className="etape-num">
                   <span>{String(e.numero).padStart(2, '0')}</span>
                 </div>
                 <div className="etape-body">
-                  <div className="etape-titre">&gt; {e.titre.toUpperCase()}</div>
+                  <div className="etape-titre">&gt; {(e.titre || 'ETAPE').toUpperCase()}</div>
                   <p className="etape-desc">{e.description}</p>
                   {e.valeur_a_controler && (
                     <div className="etape-valeur">
@@ -1101,8 +1114,8 @@ function DiagnosticCard({ data }) {
           <ul className="list-verif">
             {data.verification_finale.map((v, i) => (
               <li key={i}>
-                <input type="checkbox" id={`vf-${i}-${genId()}`} />
-                <label>{v}</label>
+                <input type="checkbox" id={`vf-${i}`} />
+                <label htmlFor={`vf-${i}`}>{v}</label>
               </li>
             ))}
           </ul>
@@ -1247,12 +1260,14 @@ function ReponseCard({ data }) {
 // ─────────────────────────────────────────────────────────────
 //  HISTORY PANEL
 // ─────────────────────────────────────────────────────────────
-function HistoryPanel({ onClose, onClearAll }) {
+function HistoryPanel({ onClose, onClearAll, onCountUpdate }) {
   const [entries, setEntries] = useState(() => loadHistory())
 
   function handleDelete(id) {
     deleteHistoryEntry(id)
-    setEntries(loadHistory())
+    const updated = loadHistory()
+    setEntries(updated)
+    onCountUpdate(updated.length)
   }
 
   function handleClear() {
@@ -1615,6 +1630,7 @@ export default function App() {
         <HistoryPanel
           onClose={() => setShowHistory(false)}
           onClearAll={() => setHistCount(0)}
+          onCountUpdate={(n) => setHistCount(n)}
         />
       )}
 
@@ -1788,7 +1804,7 @@ export default function App() {
                   {msg.data?.type === 'suivi'            && <SuiviCard      data={msg.data} />}
                   {msg.data?.type === 'reponse_question' && <ReponseCard    data={msg.data} />}
                   {msg.data && !['diagnostic','suivi','reponse_question'].includes(msg.data.type) && (
-                    <ReponseCard data={{ type: 'reponse_question', question_recue: 'Analyse ARIA', reponse: msg.data.diagnostic || msg.data.reponse || msg.data.observation || JSON.stringify(msg.data), points_cles: [], prochaine_action: null, alerte: null }} />
+                    <ReponseCard data={{ type: 'reponse_question', question_recue: 'Analyse ARIA', reponse: msg.data.diagnostic || msg.data.reponse || msg.data.observation || 'Réponse reçue. Posez une question ou envoyez une photo pour continuer.', points_cles: msg.data.points_cles || [], prochaine_action: msg.data.prochaine_action || null, alerte: msg.data.alerte || null }} />
                   )}
                   <div className="msg-time">{msg.timestamp} // ARIA</div>
                 </div>
@@ -1873,7 +1889,10 @@ export default function App() {
           {/* HMI button — scan synoptique */}
           <button
             className={`btn-mode btn-mode--hmi${inputMode === 'synoptique' ? ' btn-mode--active' : ''}`}
-            onClick={() => { setInputMode(inputMode === 'synoptique' ? 'normal' : 'synoptique'); hmiFileRef.current?.click() }}
+            onClick={() => {
+              if (inputMode === 'synoptique') { setInputMode('normal') }
+              else { setInputMode('synoptique'); hmiFileRef.current?.click() }
+            }}
             title="Scanner un écran HMI / WinCC / SCADA"
           >HMI</button>
 
@@ -1914,9 +1933,9 @@ export default function App() {
         </div>
 
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-          onChange={(e) => handleFile(e.target.files[0])} />
+          onChange={(e) => { handleFile(e.target.files[0]); e.target.value = '' }} />
         <input ref={hmiFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-          onChange={(e) => { handleFile(e.target.files[0]); setInputMode('synoptique') }} />
+          onChange={(e) => { handleFile(e.target.files[0]); setInputMode('synoptique'); e.target.value = '' }} />
 
         <div className="input-hint">
           {dragging

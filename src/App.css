@@ -2938,6 +2938,10 @@ body {
   .reponse-header { padding: 0.6rem 0.75rem; }
   .reponse-text { font-size: 0.8rem; }
 
+  /* ── Suivi card ── */
+  .prog-bar-ascii { display: none; }
+  .suivi-prog-wrap { gap: 0.4rem; }
+
   /* ── Mode badges ── */
   .mode-badge { font-size: 0.52rem; }
 
