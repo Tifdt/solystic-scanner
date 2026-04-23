@@ -2709,6 +2709,18 @@ body {
   background: rgba(255,176,0,0.15) !important;
   border-color: var(--amber) !important;
   color: #ffd040 !important;
+}
+.btn-mode--prv {
+  color: #00b8cc;
+  border-color: rgba(0,229,255,0.35);
+  background: rgba(0,229,255,0.05);
+}
+.btn-mode--prv:hover,
+.btn-mode--active-prv {
+  background: rgba(0,229,255,0.14) !important;
+  border-color: #00e5ff !important;
+  color: #00e5ff !important;
+  box-shadow: 0 0 10px rgba(0,229,255,0.35) !important;
   box-shadow: 0 0 10px rgba(255,176,0,0.35) !important;
 }
 
@@ -2733,6 +2745,11 @@ body {
   background: rgba(255,176,0,0.07);
   border-color: rgba(255,176,0,0.3);
   color: var(--amber);
+}
+.mode-strip--preventif {
+  background: rgba(0,229,255,0.06);
+  border-color: rgba(0,229,255,0.3);
+  color: #00e5ff;
 }
 
 .mode-strip-icon { font-size: 0.7rem; opacity: 0.8; }
@@ -2773,6 +2790,12 @@ body {
   color: var(--amber);
   border-color: rgba(255,176,0,0.5);
   background: rgba(255,176,0,0.07);
+}
+.mode-badge--prv {
+  color: #00e5ff;
+  border-color: rgba(0,229,255,0.5);
+  background: rgba(0,229,255,0.07);
+  text-shadow: 0 0 6px rgba(0,229,255,0.6);
   text-shadow: 0 0 6px rgba(255,176,0,0.5);
 }
 
@@ -2962,4 +2985,140 @@ body {
   .input-preview-bar { padding: 0.3rem 0.5rem; gap: 0.4rem; }
   .input-preview-thumb img { width: 34px; height: 34px; }
   .input-preview-name { font-size: 0.58rem; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   PREVENTIF CARD
+══════════════════════════════════════════════════════════ */
+.preventif-card { border-color: #0099bb; }
+
+.prv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 2px;
+  border: 1px solid;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+.prv-score-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.prv-bar-wrap { opacity: 0.75; }
+
+.prv-risks { display: flex; flex-direction: column; gap: 0.55rem; }
+.prv-risk-item {
+  border: 1px solid;
+  border-radius: 2px;
+  padding: 0.55rem 0.75rem;
+}
+.prv-risk-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  flex-wrap: wrap;
+}
+.prv-risk-badge {
+  font-size: 0.58rem;
+  border: 1px solid;
+  padding: 0.1rem 0.4rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.prv-risk-composant {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+.prv-risk-delai {
+  font-size: 0.65rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.prv-risk-observe,
+.prv-risk-action {
+  font-size: 0.75rem;
+  color: #99bb99;
+  line-height: 1.55;
+  margin-top: 0.22rem;
+}
+.prv-risk-label {
+  color: #556655;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  margin-right: 0.3rem;
+}
+
+.prv-horizon-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+.prv-horizon {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.7rem;
+  border-radius: 2px;
+}
+.prv-horizon-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  text-shadow: 0 0 6px currentColor;
+}
+
+.prv-action-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.prv-action-list li {
+  font-size: 0.75rem;
+  color: #99bb99;
+  line-height: 1.5;
+  display: flex;
+  gap: 0.4rem;
+}
+.prv-action-list--now li { color: #aaddaa; }
+.prv-action-list--ok li  { color: #77aa77; }
+
+.prv-tag--now { color: #00ff41 !important; }
+.prv-tag--ok  { color: #00aa22 !important; }
+
+.prv-arret {
+  background: rgba(0,229,255,0.05);
+  border: 1px solid rgba(0,229,255,0.25);
+  border-radius: 2px;
+  padding: 0.65rem 0.85rem;
+  margin-top: 0.6rem;
+}
+.prv-arret-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: #00e5ff;
+  text-shadow: 0 0 6px rgba(0,229,255,0.5);
+  margin-bottom: 0.35rem;
+}
+.prv-arret p {
+  font-size: 0.78rem;
+  color: #99dddd;
+  line-height: 1.55;
+}
+
+@media (max-width: 600px) {
+  .prv-horizon-grid { grid-template-columns: 1fr; }
+  .prv-bar-wrap { display: none; }
 }

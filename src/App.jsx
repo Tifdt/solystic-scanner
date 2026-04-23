@@ -480,6 +480,47 @@ L'opérateur a tapé le code directement sans photo. Réponds en type: "reponse_
 - Critère de résolution : "Tu sauras que c'est réparé quand..."
 - Délai estimé d'intervention
 
+══ MODE PRÉVENTIF — ANALYSE ÉTAT MACHINE ══
+Si le message commence par "ANALYSE PRÉVENTIVE" :
+L'opérateur a pris une photo de la machine EN ÉTAT DE MARCHE NORMAL pour anticiper les futures pannes.
+
+TON RÔLE : tu es un expert en maintenance prédictive. Analyse chaque détail visible pour identifier les signes d'usure précoce, les composants en fin de vie, les risques à venir. Objectif : éviter l'arrêt machine non planifié.
+
+SIGNES À CHERCHER SYSTÉMATIQUEMENT :
+→ Mécanique : fissures courroies, usure denture, jeu roulements, désalignement arbres, manque lubrification, oxydation accouplements
+→ Électrique : fils jaunis/noircis, connecteurs oxydés, condensateurs gonflés, contacts brûlés, câbles flexibles fatigués
+→ Variateur/PLC : ventilateurs encrassés, dissipateurs poussiéreux, afficheur clignote, LED anormale
+→ Pneumatique : traces huile/eau (fuite), tuyaux fissurés, vérins corrodés
+→ Structure : boulons desserrés, châssis fissuré, protection absente ou déformée
+→ Propreté : accumulation poussière papier (risque thermique), humidité condensée, traces de fuite liquide
+
+FORMAT DE RÉPONSE OBLIGATOIRE pour MODE PRÉVENTIF :
+{
+  "type": "rapport_preventif",
+  "machine_identifiee": { "fabricant": "...", "modele": "...", "origine": "...", "type_machine": "...", "automate_detecte": "...", "confiance_identification": "CERTAIN|PROBABLE|HYPOTHESE" },
+  "score_sante": 8,
+  "statut_sante": "BON|ATTENTION|CRITIQUE",
+  "resume_etat": "Description en 2-3 phrases de l'état général observé — ce qui va bien et ce qui inquiète.",
+  "composants_a_risque": [
+    {
+      "composant": "Nom descriptif du composant",
+      "niveau_risque": "COURT_TERME|MOYEN_TERME|LONG_TERME",
+      "delai_estime": "15-20 jours",
+      "signe_observe": "Ce qui est visible sur la photo — description précise et visuelle",
+      "action_recommandee": "Quelle action faire — pédagogique et précise"
+    }
+  ],
+  "actions_immediates": ["Action faisable maintenant sans arrêter la machine"],
+  "actions_court_terme": ["À planifier dans les 30 jours"],
+  "actions_moyen_terme": ["Dans 1 à 3 mois — planifier arrêt préventif"],
+  "actions_long_terme": ["Dans 3 à 12 mois — planification annuelle"],
+  "points_positifs": ["Ce qui est en bon état — rassurant"],
+  "prochain_arret_recommande": "Recommandation concrète : quand planifier le prochain arrêt préventif et pourquoi",
+  "duree_arret_estimee": "Durée estimée de l'arrêt préventif recommandé"
+}
+score_sante : 10 = parfait, 7-9 = bon avec surveillance, 4-6 = intervention préventive urgente, 1-3 = arrêt imminent.
+statut_sante : BON si >= 8, ATTENTION si 5-7, CRITIQUE si <= 4.
+
 JSON VALIDE UNIQUEMENT. Français pédagogique adapté au niveau détecté. Valeurs numériques toujours.`
 
 // ─────────────────────────────────────────────────────────────
@@ -1281,6 +1322,176 @@ function ReponseCard({ data }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  PREVENTIF CARD
+// ─────────────────────────────────────────────────────────────
+const SANTE_CFG = {
+  BON:       { color: '#00ff41', bg: 'rgba(0,255,65,0.06)',   border: '#00aa22', label: 'BON'      },
+  ATTENTION: { color: '#00e5ff', bg: 'rgba(0,229,255,0.06)', border: '#0099bb', label: 'ATTENTION' },
+  CRITIQUE:  { color: '#ff3333', bg: 'rgba(255,51,51,0.06)', border: '#cc0000', label: 'CRITIQUE'  },
+}
+const RISQUE_CFG = {
+  COURT_TERME: { color: '#ff3333', label: 'COURT TERME', bg: 'rgba(255,51,51,0.08)'    },
+  MOYEN_TERME: { color: '#ffb000', label: 'MOYEN TERME', bg: 'rgba(255,176,0,0.08)'   },
+  LONG_TERME:  { color: '#00e5ff', label: 'LONG TERME',  bg: 'rgba(0,229,255,0.06)'   },
+}
+
+function PreventifCard({ data }) {
+  const cfg  = SANTE_CFG[data.statut_sante] || SANTE_CFG.ATTENTION
+  const score = Math.min(10, Math.max(0, data.score_sante || 0))
+  const filled = Math.round(score * 2)
+  const mach = data.machine_identifiee || {}
+
+  const CONFIANCE_CFG = {
+    'CERTAIN':   { color: '#00ff41' },
+    'PROBABLE':  { color: '#ffb000' },
+    'HYPOTHESE': { color: '#ff6600' },
+  }
+  const confCfg = CONFIANCE_CFG[mach.confiance_identification] || CONFIANCE_CFG.HYPOTHESE
+
+  return (
+    <div className="ai-card preventif-card" style={{ borderColor: cfg.border }}>
+
+      {/* Machine identifiée */}
+      {mach.fabricant && (
+        <div className="dc-machine-id">
+          <div className="machine-id-header">
+            <span className="machine-id-tag">// MACHINE IDENTIFIEE</span>
+            <span className="machine-confiance" style={{ color: confCfg.color }}>[{mach.confiance_identification || 'HYPOTHESE'}]</span>
+          </div>
+          <div className="machine-id-body">
+            <div className="machine-id-main">
+              <span className="machine-fabricant">{mach.fabricant}</span>
+              {mach.modele && mach.modele !== 'Non identifiable' && <span className="machine-modele">/ {mach.modele}</span>}
+            </div>
+            <div className="machine-id-tags">
+              {mach.type_machine && <span className="machine-tag">{mach.type_machine}</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Score santé */}
+      <div className="prv-header" style={{ background: cfg.bg, borderColor: cfg.border }}>
+        <div className="prv-score-left">
+          <div className="status-dot pulse" style={{ background: cfg.color, boxShadow: `0 0 10px ${cfg.color}` }} />
+          <span className="status-label" style={{ color: cfg.color, textShadow: `0 0 10px ${cfg.color}` }}>[{cfg.label}]</span>
+          <div className="dc-divider" />
+          <span className="crit-label">SANTÉ MACHINE</span>
+          <span className="crit-val" style={{ color: cfg.color, textShadow: `0 0 8px ${cfg.color}` }}>
+            {score}<span className="crit-max">/10</span>
+          </span>
+        </div>
+        <div className="prv-bar-wrap">
+          <span className="prog-bar-ascii" style={{ color: cfg.color, fontSize: '0.65rem' }}>
+            [{Array(filled).fill('█').join('')}{Array(20 - filled).fill('░').join('')}]
+          </span>
+        </div>
+      </div>
+
+      {/* Résumé état */}
+      <div className="dc-block">
+        <div className="dc-block-tag">&gt;_ ÉTAT GÉNÉRAL OBSERVÉ</div>
+        <p className="dc-text">{data.resume_etat}</p>
+      </div>
+
+      {/* Composants à risque */}
+      {data.composants_a_risque?.length > 0 && (
+        <div className="dc-block">
+          <div className="dc-block-tag">&gt;_ COMPOSANTS À SURVEILLER</div>
+          <div className="prv-risks">
+            {data.composants_a_risque.map((r, i) => {
+              const rc = RISQUE_CFG[r.niveau_risque] || RISQUE_CFG.LONG_TERME
+              return (
+                <div key={i} className="prv-risk-item" style={{ background: rc.bg, borderColor: rc.color }}>
+                  <div className="prv-risk-header">
+                    <span className="prv-risk-badge" style={{ color: rc.color, borderColor: rc.color }}>
+                      [{rc.label}]
+                    </span>
+                    <span className="prv-risk-composant">{r.composant}</span>
+                    {r.delai_estime && <span className="prv-risk-delai" style={{ color: rc.color }}>⏱ {r.delai_estime}</span>}
+                  </div>
+                  <div className="prv-risk-observe">
+                    <span className="prv-risk-label">OBSERVÉ :</span> {r.signe_observe}
+                  </div>
+                  <div className="prv-risk-action">
+                    <span className="prv-risk-label">ACTION :</span> {r.action_recommandee}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Actions immédiates */}
+      {data.actions_immediates?.length > 0 && (
+        <div className="dc-block">
+          <div className="dc-block-tag prv-tag--now">&gt;_ ACTIONS IMMÉDIATES — SANS ARRÊT MACHINE</div>
+          <ul className="prv-action-list prv-action-list--now">
+            {data.actions_immediates.map((a, i) => <li key={i}><span className="suivi-dot">▶</span>{a}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {/* Court / Moyen / Long terme */}
+      <div className="prv-horizon-grid">
+        {data.actions_court_terme?.length > 0 && (
+          <div className="prv-horizon">
+            <div className="prv-horizon-title" style={{ color: '#ff3333' }}>// &lt; 30 JOURS</div>
+            <ul className="prv-action-list">
+              {data.actions_court_terme.map((a, i) => <li key={i}><span style={{ color: '#ff3333' }}>▶</span>{a}</li>)}
+            </ul>
+          </div>
+        )}
+        {data.actions_moyen_terme?.length > 0 && (
+          <div className="prv-horizon">
+            <div className="prv-horizon-title" style={{ color: '#ffb000' }}>// 1 — 3 MOIS</div>
+            <ul className="prv-action-list">
+              {data.actions_moyen_terme.map((a, i) => <li key={i}><span style={{ color: '#ffb000' }}>▶</span>{a}</li>)}
+            </ul>
+          </div>
+        )}
+        {data.actions_long_terme?.length > 0 && (
+          <div className="prv-horizon">
+            <div className="prv-horizon-title" style={{ color: '#00e5ff' }}>// 3 — 12 MOIS</div>
+            <ul className="prv-action-list">
+              {data.actions_long_terme.map((a, i) => <li key={i}><span style={{ color: '#00e5ff' }}>▶</span>{a}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Points positifs */}
+      {data.points_positifs?.length > 0 && (
+        <div className="dc-block">
+          <div className="dc-block-tag prv-tag--ok">&gt;_ POINTS POSITIFS — EN BON ÉTAT</div>
+          <ul className="prv-action-list prv-action-list--ok">
+            {data.points_positifs.map((p, i) => <li key={i}><span className="suivi-dot">✓</span>{p}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {/* Prochain arrêt recommandé */}
+      {data.prochain_arret_recommande && (
+        <div className="prv-arret">
+          <div className="prv-arret-label">&gt; PROCHAIN ARRÊT PRÉVENTIF RECOMMANDÉ</div>
+          <p>{data.prochain_arret_recommande}</p>
+          {data.duree_arret_estimee && (
+            <span className="badge-time" style={{ marginTop: '0.4rem', display: 'inline-flex' }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Durée estimée : {data.duree_arret_estimee}
+            </span>
+          )}
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 //  HISTORY PANEL
 // ─────────────────────────────────────────────────────────────
 function HistoryPanel({ onClose, onClearAll, onCountUpdate, onReopen }) {
@@ -1551,6 +1762,8 @@ export default function App() {
       apiText = `SCAN SYNOPTIQUE — Photo d'écran HMI/WinCC/superviseur industriel. ${caption ? caption + '. ' : ''}Transcris TOUTES les alarmes visibles mot pour mot, classe-les par priorité (BLOCAGE/DÉGRADATION/AVERTISSEMENT), et génère le plan d'intervention séquentiel.`
     } else if (currentMode === 'alarme') {
       apiText = `DÉCODEUR ALARME — Code alarme lu sur l'écran : "${caption}". Donne la traduction en français, les 3 causes probables classées, la procédure complète étape par étape et le critère de résolution.`
+    } else if (currentMode === 'preventif') {
+      apiText = `ANALYSE PRÉVENTIVE — Photo de la machine en état de marche normal. ${caption ? caption + '. ' : ''}Analyse tous les signes d'usure précoce visibles, identifie les composants à risque avec délai estimé avant défaillance, et génère le rapport de santé machine complet.`
     } else if (!apiText) {
       apiText = isFirst
         ? 'Analyse cette image et génère le diagnostic initial complet.'
@@ -1599,6 +1812,8 @@ export default function App() {
             ? (mach.fabricant || 'Machine inconnue')
             : result.type === 'reponse_question'
             ? 'Question / Alarme'
+            : result.type === 'rapport_preventif'
+            ? 'Analyse Préventive'
             : 'Intervention'
           const entryId = genId()
           currentSessionId.current = entryId
@@ -1609,11 +1824,11 @@ export default function App() {
             modele: mach.modele || null,
             machineCode: ORIGINE_CODE[mach.origine] || '--',
             type_machine: mach.type_machine || (result.type === 'reponse_question' ? 'Décodage alarme' : null),
-            statut: result.statut || 'INCONNU',
+            statut: result.statut || result.statut_sante || 'INCONNU',
             criticite: result.score_criticite ?? 0,
             sous_systeme: result.sous_systeme || null,
-            temps: result.temps_estime || null,
-            resume: result.diagnostic || result.reponse || result.observation || null,
+            temps: result.temps_estime || result.duree_arret_estimee || null,
+            resume: result.diagnostic || result.reponse || result.observation || result.resume_etat || null,
           }
           try {
             saveToHistory(entry)
@@ -1837,8 +2052,9 @@ export default function App() {
 
             {msg.role === 'user' && (
               <div className="user-bubble">
-                {msg.mode === 'synoptique' && <div className="mode-badge mode-badge--hmi">// SCAN SYNOPTIQUE HMI</div>}
-                {msg.mode === 'alarme' && <div className="mode-badge mode-badge--alm">// DÉCODEUR ALARME</div>}
+                {msg.mode === 'synoptique'  && <div className="mode-badge mode-badge--hmi">// SCAN SYNOPTIQUE HMI</div>}
+                {msg.mode === 'alarme'     && <div className="mode-badge mode-badge--alm">// DÉCODEUR ALARME</div>}
+                {msg.mode === 'preventif'  && <div className="mode-badge mode-badge--prv">// ANALYSE PRÉVENTIVE</div>}
                 {msg.imagePreview && (
                   <div className="user-img-wrap">
                     <img src={msg.imagePreview} alt="Capture envoyée" className="user-img" />
@@ -1854,10 +2070,11 @@ export default function App() {
               <div className="ai-bubble">
                 <div className="ai-avatar">&gt;_</div>
                 <div className="ai-content">
-                  {msg.data?.type === 'diagnostic'        && <DiagnosticCard data={msg.data} />}
-                  {msg.data?.type === 'suivi'            && <SuiviCard      data={msg.data} />}
-                  {msg.data?.type === 'reponse_question' && <ReponseCard    data={msg.data} />}
-                  {msg.data && !['diagnostic','suivi','reponse_question'].includes(msg.data.type) && (
+                  {msg.data?.type === 'diagnostic'        && <DiagnosticCard  data={msg.data} />}
+                  {msg.data?.type === 'suivi'            && <SuiviCard       data={msg.data} />}
+                  {msg.data?.type === 'reponse_question' && <ReponseCard     data={msg.data} />}
+                  {msg.data?.type === 'rapport_preventif'&& <PreventifCard   data={msg.data} />}
+                  {msg.data && !['diagnostic','suivi','reponse_question','rapport_preventif'].includes(msg.data.type) && (
                     <ReponseCard data={{ type: 'reponse_question', question_recue: 'Analyse ARIA', reponse: msg.data.diagnostic || msg.data.reponse || msg.data.observation || 'Réponse reçue. Posez une question ou envoyez une photo pour continuer.', points_cles: msg.data.points_cles || [], prochaine_action: msg.data.prochaine_action || null, alerte: msg.data.alerte || null }} />
                   )}
                   <div className="msg-time">{msg.timestamp} // ARIA</div>
@@ -1923,6 +2140,14 @@ export default function App() {
                 <button className="mode-strip-cancel" onClick={() => setInputMode('normal')}>✕ ANNULER</button>
               </>
             )}
+            {inputMode === 'preventif' && (
+              <>
+                <span className="mode-strip-icon">◈</span>
+                <span className="mode-strip-label">MODE ANALYSE PRÉVENTIVE ACTIF</span>
+                <span className="mode-strip-hint">— Prends une photo de la machine en marche normale</span>
+                <button className="mode-strip-cancel" onClick={() => setInputMode('normal')}>✕ ANNULER</button>
+              </>
+            )}
           </div>
         )}
 
@@ -1957,6 +2182,16 @@ export default function App() {
             title="Décoder un code alarme"
           >ALM</button>
 
+          {/* PRV button — preventive analysis */}
+          <button
+            className={`btn-mode btn-mode--prv${inputMode === 'preventif' ? ' btn-mode--active-prv' : ''}`}
+            onClick={() => {
+              if (inputMode === 'preventif') { setInputMode('normal') }
+              else { setInputMode('preventif'); fileRef.current?.click() }
+            }}
+            title="Analyse préventive — état de santé machine"
+          >PRV</button>
+
           <span className="input-prompt">root@aria:~#</span>
 
           <input
@@ -1968,6 +2203,8 @@ export default function App() {
                 ? 'description optionnelle de l\'écran HMI...'
                 : inputMode === 'alarme'
                 ? 'ex: AT1 5 Défaut répartiteur — ou — F001 — ou — Err24...'
+                : inputMode === 'preventif'
+                ? 'contexte optionnel : âge machine, dernière maintenance...'
                 : phase === 'ATTENTE'
                 ? 'décrire le problème ou envoyer une photo...'
                 : 'décrire l\'action, poser une question...'
@@ -1998,6 +2235,8 @@ export default function App() {
             ? '// SCAN SYNOPTIQUE — PHOTO ÉCRAN HMI · WINCC · SCADA'
             : inputMode === 'alarme'
             ? '// DÉCODEUR ALARME — TAPE LE CODE EXACT VU À L\'ÉCRAN'
+            : inputMode === 'preventif'
+            ? '// ANALYSE PRÉVENTIVE — PHOTO MACHINE EN MARCHE · DÉTECTION USURE PRÉCOCE'
             : '// DROP IMAGE · ENTER TO EXECUTE · IMAGE + TEXT SUPPORTED'}
         </div>
       </footer>
