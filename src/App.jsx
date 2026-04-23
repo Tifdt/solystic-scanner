@@ -2030,6 +2030,13 @@ export default function App() {
                   <div className="feat-desc">Pendant la reparation : pose tes questions par ecrit sur la derniere image analysee. ARIA repond comme un expert a cote de toi.</div>
                 </div>
               </div>
+              <div className="feat-item feat-item--prv">
+                <span className="feat-idx feat-idx--cyan">[05]</span>
+                <div>
+                  <div className="feat-title feat-title--prv">ANALYSE PREVENTIVE <span className="feat-tag feat-tag--prv">PRV</span></div>
+                  <div className="feat-desc">Photo de la machine en marche normale → ARIA detecte l'usure precoce, liste les composants a risque et planifie les actions preventives</div>
+                </div>
+              </div>
             </div>
 
             <div className="welcome-compat">
