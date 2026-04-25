@@ -3160,3 +3160,163 @@ body {
   .prv-horizon-grid { grid-template-columns: 1fr; }
   .prv-bar-wrap { display: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PREDICTION BUTTON
+══════════════════════════════════════════════════════════════ */
+.btn-prediction {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.5rem;
+  background: rgba(255,51,51,0.08);
+  border: 1px solid rgba(255,51,51,0.4);
+  color: #ff6666;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.btn-prediction:hover {
+  background: rgba(255,51,51,0.15);
+  border-color: #ff3333;
+  box-shadow: 0 0 12px rgba(255,51,51,0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PREDICTION PANEL
+══════════════════════════════════════════════════════════════ */
+.pred-notice {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  border: 1px solid rgba(255,140,0,0.3);
+  background: rgba(255,140,0,0.05);
+  padding: 0.55rem 0.9rem;
+  margin-bottom: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.pred-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.2rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.pred-legend-item { display: flex; align-items: center; gap: 0.4rem; }
+
+.pred-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.pred-card {
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+}
+.pred-card--rouge { border-color: rgba(255,51,51,0.4); }
+.pred-card--orange { border-color: rgba(255,140,0,0.35); }
+.pred-card--vert { border-color: rgba(0,255,65,0.25); }
+
+.pred-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem 0.6rem;
+  border-bottom: 1px solid var(--border2);
+}
+.pred-card-machine { display: flex; flex-direction: column; gap: 0.15rem; }
+.pred-card-fab { font-size: 0.82rem; font-weight: 700; color: var(--text); letter-spacing: 0.06em; }
+.pred-card-model { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; }
+
+.pred-score-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pred-score-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pred-score-num {
+  opacity: 0.6;
+  font-size: 0.58rem;
+  margin-left: 0.2rem;
+}
+
+.pred-card-body {
+  padding: 0.65rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+.pred-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+}
+.pred-stat-label { color: var(--text-dim); letter-spacing: 0.04em; flex-shrink: 0; }
+.pred-stat-val { color: var(--text); font-weight: 600; text-align: right; }
+
+.pred-card-footer {
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-top: 1px solid var(--border2);
+}
+.pred-card-footer--rouge { background: rgba(255,51,51,0.06); }
+.pred-card-footer--orange { background: rgba(255,140,0,0.05); }
+.pred-card-footer--vert { background: rgba(0,255,65,0.04); }
+
+.pred-footer-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+.pred-footer-date {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.pred-footer-countdown {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.pred-disclaimer {
+  margin-top: 1.2rem;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+  padding: 0 0.2rem;
+}
+
+@media (max-width: 600px) {
+  .btn-prediction { padding: 0.28rem 0.45rem; font-size: 0.55rem; }
+  .btn-prediction svg { display: none; }
+  .pred-grid { grid-template-columns: 1fr; }
+}

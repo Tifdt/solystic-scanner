@@ -614,6 +614,88 @@ function getAriaInsights(entries) {
   return insights
 }
 
+function parseEntryDate(str) {
+  if (!str) return null
+  const [datePart, timePart] = str.split(' ')
+  if (!datePart) return null
+  const [d, m, y] = datePart.split('/')
+  const [h, min] = (timePart || '00:00').split(':')
+  return new Date(+y, +m - 1, +d, +(h || 0), +(min || 0))
+}
+
+function computePredictions(entries) {
+  const machineMap = {}
+  entries.forEach(e => {
+    const key = `${e.fabricant || 'Inconnue'}||${e.modele || e.type_machine || ''}`
+    if (!machineMap[key]) {
+      machineMap[key] = {
+        fabricant: e.fabricant || 'Inconnue',
+        modele: e.modele || e.type_machine || null,
+        sessions: [],
+      }
+    }
+    machineMap[key].sessions.push(e)
+  })
+
+  const now = new Date()
+  return Object.values(machineMap).map(machine => {
+    const sessions = machine.sessions
+    const critMoy = sessions.reduce((s, e) => s + (e.criticite || 0), 0) / sessions.length
+
+    const dates = sessions
+      .map(e => parseEntryDate(e.date))
+      .filter(Boolean)
+      .sort((a, b) => b - a)
+    const lastDate = dates[0] || null
+    const joursDepuis = lastDate ? Math.floor((now - lastDate) / 86400000) : null
+
+    const ssCounts = {}
+    sessions.forEach(e => {
+      if (e.sous_systeme) ssCounts[e.sous_systeme] = (ssCounts[e.sous_systeme] || 0) + 1
+    })
+    const ssRecurrent = Object.entries(ssCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null
+    const ssCount = ssRecurrent ? ssCounts[ssRecurrent] : 0
+
+    let predictedDate = null
+    let predictedJours = null
+    if (dates.length >= 2) {
+      const intervals = []
+      for (let i = 0; i < dates.length - 1; i++) intervals.push(dates[i] - dates[i + 1])
+      const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length
+      predictedDate = new Date(dates[0].getTime() + avgMs)
+      predictedJours = Math.floor((predictedDate - now) / 86400000)
+    }
+
+    let score = Math.min(critMoy * 8, 64)
+    score += Math.min(sessions.length * 4, 20)
+    if (joursDepuis !== null) {
+      if (joursDepuis <= 3)       score += 25
+      else if (joursDepuis <= 7)  score += 18
+      else if (joursDepuis <= 14) score += 10
+      else if (joursDepuis <= 30) score += 5
+    }
+    if (ssRecurrent && ssCount >= 2) score += 10
+    score = Math.min(Math.round(score), 100)
+
+    const niveau = score >= 65 ? 'rouge' : score >= 35 ? 'orange' : 'vert'
+
+    return {
+      fabricant: machine.fabricant,
+      modele: machine.modele,
+      nbPannes: sessions.length,
+      critMoy: critMoy.toFixed(1),
+      lastDate,
+      joursDepuis,
+      ssRecurrent,
+      ssCount,
+      predictedDate,
+      predictedJours,
+      score,
+      niveau,
+    }
+  }).sort((a, b) => b.score - a.score)
+}
+
 // ─────────────────────────────────────────────────────────────
 //  HISTORY — localStorage
 // ─────────────────────────────────────────────────────────────
@@ -1696,6 +1778,151 @@ function DashboardPanel({ onClose }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  PREDICTION PANEL
+// ─────────────────────────────────────────────────────────────
+function PredictionPanel({ onClose }) {
+  const entries = loadHistory()
+  const predictions = computePredictions(entries)
+
+  function fmtDate(d) {
+    if (!d) return '—'
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
+
+  function fmtJours(j) {
+    if (j === null || j === undefined) return null
+    if (j < 0) return `DÉPASSÉ de ${Math.abs(j)}j`
+    if (j === 0) return "Aujourd'hui"
+    return `Dans ${j} jour${j > 1 ? 's' : ''}`
+  }
+
+  const NIVEAU_LABEL = { vert: 'BAS', orange: 'MODÉRÉ', rouge: 'ÉLEVÉ' }
+  const NIVEAU_COLOR = { vert: '#00ff41', orange: '#ff8c00', rouge: '#ff3333' }
+
+  return (
+    <div className="dash-overlay" onClick={onClose}>
+      <div className="dash-panel" onClick={e => e.stopPropagation()}>
+
+        <div className="dash-header">
+          <div>
+            <div className="dash-title">ARIA — PRÉDICTION DE PANNES</div>
+            <div style={{ color: 'var(--text-dim)', fontSize: '0.68rem', letterSpacing: '0.06em', marginTop: '0.2rem' }}>
+              Analyse de l'historique {entries.length} intervention{entries.length > 1 ? 's' : ''} · Score de risque par machine
+            </div>
+          </div>
+          <div className="dash-header-right">
+            <button className="hist-btn-close" onClick={onClose}>FERMER</button>
+          </div>
+        </div>
+
+        <div className="dash-body">
+
+          {entries.length === 0 && (
+            <div className="dash-onboarding">
+              <div className="dash-section-title">// AUCUNE DONNÉE DISPONIBLE</div>
+              <p>Aucune intervention enregistrée pour l'instant.<br />
+              Effectuez au moins un diagnostic ARIA pour alimenter le moteur de prédiction.</p>
+            </div>
+          )}
+
+          {entries.length > 0 && entries.length < 3 && (
+            <div className="pred-notice">
+              <span style={{ color: '#ff8c00' }}>[DONNÉES LIMITÉES]</span> — {entries.length} intervention{entries.length > 1 ? 's' : ''} enregistrée{entries.length > 1 ? 's' : ''}.
+              Les prédictions gagnent en précision à partir de 3 interventions par machine.
+            </div>
+          )}
+
+          {predictions.length > 0 && (
+            <div className="pred-legend">
+              <span className="pred-legend-item"><span style={{ color: '#00ff41' }}>●</span> RISQUE BAS</span>
+              <span className="pred-legend-item"><span style={{ color: '#ff8c00' }}>●</span> RISQUE MODÉRÉ</span>
+              <span className="pred-legend-item"><span style={{ color: '#ff3333' }}>●</span> RISQUE ÉLEVÉ</span>
+            </div>
+          )}
+
+          <div className="pred-grid">
+            {predictions.map((p, i) => (
+              <div key={i} className={`pred-card pred-card--${p.niveau}`}>
+
+                <div className="pred-card-header">
+                  <div className="pred-card-machine">
+                    <span className="pred-card-fab">{p.fabricant}</span>
+                    {p.modele && <span className="pred-card-model">{p.modele}</span>}
+                  </div>
+                  <div className="pred-score-badge" style={{ borderColor: NIVEAU_COLOR[p.niveau], color: NIVEAU_COLOR[p.niveau] }}>
+                    <span className="pred-score-dot" style={{ background: NIVEAU_COLOR[p.niveau] }} />
+                    RISQUE {NIVEAU_LABEL[p.niveau]}
+                    <span className="pred-score-num">{p.score}</span>
+                  </div>
+                </div>
+
+                <div className="pred-card-body">
+                  <div className="pred-stat-row">
+                    <span className="pred-stat-label">Interventions</span>
+                    <span className="pred-stat-val">{p.nbPannes}</span>
+                  </div>
+                  <div className="pred-stat-row">
+                    <span className="pred-stat-label">Criticité moy.</span>
+                    <span className="pred-stat-val" style={{ color: p.critMoy >= 7 ? '#ff3333' : p.critMoy >= 4 ? '#ff8c00' : '#00ff41' }}>
+                      {p.critMoy}/10
+                    </span>
+                  </div>
+                  <div className="pred-stat-row">
+                    <span className="pred-stat-label">Dernière panne</span>
+                    <span className="pred-stat-val">
+                      {p.lastDate ? fmtDate(p.lastDate) : '—'}
+                      {p.joursDepuis !== null && (
+                        <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: '0.4rem' }}>
+                          (il y a {p.joursDepuis}j)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {p.ssRecurrent && (
+                    <div className="pred-stat-row">
+                      <span className="pred-stat-label">Sous-système récurrent</span>
+                      <span className="pred-stat-val" style={{ color: '#ff8c00' }}>
+                        {p.ssRecurrent.replace('_', ' ')}
+                        {p.ssCount >= 2 && <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: '0.3rem' }}>×{p.ssCount}</span>}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className={`pred-card-footer pred-card-footer--${p.niveau}`}>
+                  {p.predictedDate ? (
+                    <>
+                      <span className="pred-footer-label">PROCHAINE PANNE ESTIMÉE</span>
+                      <span className="pred-footer-date">{fmtDate(p.predictedDate)}</span>
+                      <span className="pred-footer-countdown" style={{ color: NIVEAU_COLOR[p.niveau] }}>
+                        {fmtJours(p.predictedJours)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="pred-footer-label" style={{ color: 'var(--text-dim)' }}>
+                      Données insuffisantes — 1 seule intervention enregistrée
+                    </span>
+                  )}
+                </div>
+
+              </div>
+            ))}
+          </div>
+
+          {predictions.length > 0 && (
+            <div className="pred-disclaimer">
+              // Prédictions basées sur l'historique des interventions enregistrées dans ARIA.
+              Plus l'historique est riche, plus les estimations sont précises.
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
 export default function App() {
@@ -1710,8 +1937,9 @@ export default function App() {
   const [dragging, setDragging]     = useState(false)
   const [time, setTime]             = useState(nowStr())
   const [inputMode, setInputMode]         = useState('normal')
-  const [showHistory, setShowHistory]     = useState(false)
-  const [showDashboard, setShowDashboard] = useState(false)
+  const [showHistory, setShowHistory]         = useState(false)
+  const [showDashboard, setShowDashboard]     = useState(false)
+  const [showPrediction, setShowPrediction]   = useState(false)
   const [histCount, setHistCount] = useState(() => loadHistory().length)
 
   const fileRef          = useRef(null)
@@ -1908,6 +2136,11 @@ export default function App() {
         <DashboardPanel onClose={() => setShowDashboard(false)} />
       )}
 
+      {/* ══ PRÉDICTION ══ */}
+      {showPrediction && (
+        <PredictionPanel onClose={() => setShowPrediction(false)} />
+      )}
+
       {/* ══ HEADER ══ */}
       <header className="shell-header">
         <div className="hdr-left">
@@ -1933,6 +2166,14 @@ export default function App() {
             {phase === 'TERMINE'      && '[COMPLETE]'}
           </div>
           <span className="faloria-link">FALORIA &amp; Co</span>
+
+          {/* Prediction button */}
+          <button className="btn-prediction" onClick={() => setShowPrediction(true)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            PRÉDICTION
+          </button>
 
           {/* Dashboard button */}
           <button className="btn-dashboard" onClick={() => setShowDashboard(true)}>
